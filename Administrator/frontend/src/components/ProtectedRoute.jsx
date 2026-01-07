@@ -1,0 +1,18 @@
+import React from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+
+const ProtectedRoute = () => {
+    // Check for token in localStorage
+    // You can also check for user object or expiration here
+    const isAuthenticated = localStorage.getItem('adminToken');
+
+    if (!isAuthenticated) {
+        // If not authenticated, redirect to login page
+        return <Navigate to="/login" replace />;
+    }
+
+    // If authenticated, render the child routes
+    return <Outlet />;
+};
+
+export default ProtectedRoute;
