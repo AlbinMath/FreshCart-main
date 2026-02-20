@@ -32,11 +32,14 @@ app.get('/', (req, res) => {
 const authRoutes = require('./routes/auth');
 const productRoutes = require('./routes/product');
 const orderRoutes = require('./routes/order');
+const reviewRoutes = require('./routes/review');
 const Order = require('./models/Order'); // Import Order model for Change Stream
 
 app.use('/api/seller', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/notifications', require('./routes/notification'));
 
 // Start Server
 connectDB().then(() => {

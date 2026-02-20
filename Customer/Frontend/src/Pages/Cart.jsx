@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { cartService } from '../services/cartService';
-import Navbar from '../navbar/Navbar';
-import Footer from '../navbar/Footer';
 import { Link } from 'react-router-dom';
 
 export default function Cart() {
@@ -10,6 +9,8 @@ export default function Cart() {
     const [cartItems, setCartItems] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [taxDetails, setTaxDetails] = useState(null);
+    const [calculatingTax, setCalculatingTax] = useState(false);
 
     useEffect(() => {
         if (currentUser) {
@@ -34,12 +35,61 @@ export default function Cart() {
         }
     };
 
+    const fetchTaxDetails = async (items) => {
+        if (!items || items.length === 0) {
+            setTaxDetails(null);
+            return;
+        }
+
+        try {
+            setCalculatingTax(true);
+            const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+            // Calculate delivery fee based on subtotal
+            let deliveryFee = 50;
+            if (subtotal > 1000) {
+                deliveryFee = 0;
+            } else if (subtotal >= 600) {
+                deliveryFee = 10;
+            }
+
+            const platformFee = 5;
+
+            const taxRes = await fetch('http://localhost:5005/api/v1/tax/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: items.map(i => ({ ...i, category: 'basic' })),
+                    deliveryFee,
+                    platformFee
+                })
+            });
+            const taxData = await taxRes.json();
+
+            if (taxData.success) {
+                setTaxDetails(taxData.data);
+            }
+        } catch (err) {
+            console.error("Failed to calculate tax", err);
+        } finally {
+            setCalculatingTax(false);
+        }
+    };
+
+    useEffect(() => {
+        if (cartItems.length > 0) {
+            fetchTaxDetails(cartItems);
+        } else {
+            setTaxDetails(null);
+        }
+    }, [cartItems]);
+
     const handleQuantityChange = async (productId, newQuantity) => {
         if (newQuantity < 1) return;
 
         const item = cartItems.find(i => i.productId === productId);
         if (item && item.stock && newQuantity > item.stock) {
-            alert(`Only ${item.stock} units available in stock`);
+            showToast(`Only ${item.stock} units available in stock`, 'warning');
             return;
         }
 
@@ -54,7 +104,7 @@ export default function Cart() {
             if (!response.success) {
                 // Revert on failure
                 setCartItems(oldItems);
-                alert("Failed to update quantity");
+                showToast("Failed to update quantity", 'error');
             }
         } catch (err) {
             console.error(err);
@@ -68,12 +118,13 @@ export default function Cart() {
             const response = await cartService.removeFromCart(currentUser.uid, productId);
             if (response.success) {
                 setCartItems(items => items.filter(item => item.productId !== productId));
+                showToast("Item removed from cart", 'success');
             } else {
-                alert("Failed to remove item");
+                showToast("Failed to remove item", 'error');
             }
         } catch (err) {
             console.error(err);
-            alert("Error removing item");
+            showToast("Error removing item", 'error');
         }
     };
 
@@ -85,13 +136,11 @@ export default function Cart() {
     };
 
     const subtotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-    const tax = subtotal * 0.05; // 5% tax example
-    const total = subtotal + tax;
 
     if (!currentUser) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
-                <Navbar />
+
                 <div className="flex-grow flex items-center justify-center px-4">
                     <div className="text-center max-w-md w-full bg-white p-8 rounded-lg shadow-md">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -114,14 +163,14 @@ export default function Cart() {
                         </div>
                     </div>
                 </div>
-                <Footer />
+
             </div>
         );
     }
 
     if (loading) return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
+
             <div className="flex-grow flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
             </div>
@@ -130,7 +179,7 @@ export default function Cart() {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
-            <Navbar />
+
             <div className="container mx-auto px-4 py-8">
                 <h1 className="text-3xl font-bold text-gray-800 mb-8">Shopping Cart</h1>
 
@@ -166,8 +215,13 @@ export default function Cart() {
                                                             {item.productName}
                                                         </Link>
                                                     </h3>
-                                                    <p className="mt-1 text-sm text-gray-500">Seller ID: {item.sellerId || 'Ref-Seller'}</p>
-                                                    <p className="mt-1 text-sm font-medium text-green-600">{formatPrice(item.price)}</p>
+                                                    <div className="text-xs text-gray-500 mt-1 space-y-1">
+                                                        <p>Product ID: <span className="font-mono">{item.product_id || item.productId}</span></p>
+                                                        <p>Seller ID: <span className="font-mono">{item.sellerUniqueId || 'Unknown'}</span></p>
+                                                    </div>
+                                                    <p className="mt-1 text-sm font-medium text-green-600">
+                                                        {formatPrice(item.price)} {item.unit ? `per ${item.unit}` : ''}
+                                                    </p>
                                                 </div>
 
                                                 <div className="mt-4 sm:mt-0 flex items-center gap-4">
@@ -206,20 +260,73 @@ export default function Cart() {
                         <div className="lg:w-1/3">
                             <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
                                 <h2 className="text-lg font-medium text-gray-900 mb-4">Order Summary</h2>
-                                <dl className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <dt className="text-sm text-gray-600">Subtotal</dt>
-                                        <dd className="text-sm font-medium text-gray-900">{formatPrice(subtotal)}</dd>
+                                {calculatingTax ? (
+                                    <div className="flex justify-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
                                     </div>
-                                    <div className="flex items-center justify-between">
-                                        <dt className="text-sm text-gray-600">Tax estimate (5%)</dt>
-                                        <dd className="text-sm font-medium text-gray-900">{formatPrice(tax)}</dd>
-                                    </div>
-                                    <div className="border-t border-gray-200 pt-4 flex items-center justify-between">
-                                        <dt className="text-base font-medium text-gray-900">Order Total</dt>
-                                        <dd className="text-xl font-bold text-gray-900">{formatPrice(total)}</dd>
-                                    </div>
-                                </dl>
+                                ) : (
+                                    <dl className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <dt className="text-sm text-gray-600">Subtotal</dt>
+                                            <dd className="text-sm font-medium text-gray-900">{formatPrice(subtotal)}</dd>
+                                        </div>
+
+                                        {taxDetails ? (
+                                            <>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <dt className="text-gray-500">
+                                                        Delivery Fee
+                                                        {taxDetails.breakdown.delivery.value === 0 && <span className="text-green-600 ml-1">(Free!)</span>}
+                                                    </dt>
+                                                    <dd className="font-medium text-gray-900">
+                                                        {formatPrice(taxDetails.breakdown.delivery.value)}
+                                                    </dd>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <dt className="text-gray-500">Platform Fee</dt>
+                                                    <dd className="font-medium text-gray-900">
+                                                        {formatPrice(taxDetails.breakdown.platformFee.value)}
+                                                    </dd>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <dt className="text-gray-500">CGST (2.5%)</dt>
+                                                    <dd className="font-medium text-gray-900">
+                                                        {formatPrice(taxDetails.totals.totalCGST)}
+                                                    </dd>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <dt className="text-gray-500">SGST (2.5%)</dt>
+                                                    <dd className="font-medium text-gray-900">
+                                                        {formatPrice(taxDetails.totals.totalSGST)}
+                                                    </dd>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <dt className="text-gray-500">TCS (1%)</dt>
+                                                    <dd className="font-medium text-gray-900">
+                                                        {formatPrice(taxDetails.breakdown.tcs.amount)}
+                                                    </dd>
+                                                </div>
+                                                <div className="border-t border-gray-200 pt-3 flex items-center justify-between">
+                                                    <dt className="text-base font-semibold text-gray-900">Order Total</dt>
+                                                    <dd className="text-xl font-bold text-green-600">{formatPrice(taxDetails.totals.grandTotal)}</dd>
+                                                </div>
+
+                                                {/* Delivery Info */}
+                                                {subtotal > 1000 && (
+                                                    <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                                                        <p className="text-xs text-green-800 font-medium">
+                                                            🎉 You got FREE delivery!
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : (
+                                            <div className="text-sm text-gray-500 text-center py-4">
+                                                Add items to see pricing details
+                                            </div>
+                                        )}
+                                    </dl>
+                                )}
 
                                 <div className="mt-6">
                                     <Link to="/checkout/address" className="block w-full text-center bg-green-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-700 transition shadow-sm">
@@ -236,7 +343,7 @@ export default function Cart() {
                     </div>
                 )}
             </div>
-            <Footer />
+
         </div>
     );
 }

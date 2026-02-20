@@ -9,9 +9,15 @@ import MyDelivery from './pages/MyDelivery';
 import Earnings from './pages/Earnings';
 import DashboardLayout from './layouts/DashboardLayout';
 
+import Tracking from './pages/Tracking';
+import LocationManager from './components/LocationManager';
+import Settings from './pages/Settings';
+import DeliveryHistory from './pages/DeliveryHistory';
+
 function App() {
     return (
         <div className="min-h-screen bg-background font-sans antialiased">
+            <LocationManager />
             <Routes>
                 <Route path="/" element={<Welcome />} />
                 <Route path="/login" element={<Login />} />
@@ -23,10 +29,11 @@ function App() {
                     <Route path="profile" element={<Profile />} />
                     {/* Placeholder for other sidebar links to avoid 404s immediately */}
                     <Route path="my-delivery" element={<MyDelivery />} />
+                    <Route path="delivery-history" element={<DeliveryHistory />} />
                     <Route path="route-planning" element={<div className="p-4">Route Planning Page (Coming Soon)</div>} />
                     <Route path="earnings" element={<Earnings />} />
-                    <Route path="tracking" element={<div className="p-4">Location Tracking Page (Coming Soon)</div>} />
-                    <Route path="settings" element={<div className="p-4">Profile Settings Page (Coming Soon)</div>} />
+                    <Route path="tracking" element={<Tracking />} />
+                    <Route path="settings" element={<Settings />} />
                 </Route>
             </Routes>
         </div>

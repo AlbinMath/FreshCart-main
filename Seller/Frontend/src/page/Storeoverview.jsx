@@ -10,10 +10,12 @@ import {
     Clock,
     MapPin,
     AlertTriangle,
+    Bell
 } from 'lucide-react';
 import { Badge } from '@/ui/badge';
 import { Progress } from '@/ui/progress';
 import OperatingHoursDialog from './OperatingHoursDialog';
+import NotificationDialog from './NotificationDialog';
 
 // Helper to format hours for display
 const formatOperatingHours = (hours) => {
@@ -62,14 +64,64 @@ const getStoreStatus = (hours, leave) => {
 const StoreOverview = () => {
     const [storeInfo, setStoreInfo] = useState(null);
     const [isHoursOpen, setIsHoursOpen] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+    const [products, setProducts] = useState([]);
+    const [orders, setOrders] = useState([]);
+    const [notifications, setNotifications] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchNotifications = async (sellerId) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/notifications/seller/${sellerId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setNotifications(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch notifications", error);
+        }
+    };
 
     useEffect(() => {
-        try {
-            const info = JSON.parse(localStorage.getItem('sellerInfo'));
-            setStoreInfo(info?.user || info);
-        } catch (e) {
-            console.error("Error loading store info", e);
-        }
+        const fetchData = async () => {
+            try {
+                // Get store info
+                const info = JSON.parse(localStorage.getItem('sellerInfo'));
+                const seller = info?.user || info;
+                setStoreInfo(seller);
+
+                if (!seller) return;
+
+                // Fetch products
+                const uniqueId = seller.sellerUniqueId;
+                if (uniqueId) {
+                    const productsRes = await fetch(`${import.meta.env.VITE_API_URL}/products/seller/${uniqueId}`);
+                    if (productsRes.ok) {
+                        const productsData = await productsRes.json();
+                        setProducts(productsData);
+                    }
+                }
+
+                // Fetch orders
+                const sellerId = seller._id;
+                if (sellerId) {
+                    const ordersRes = await fetch(`${import.meta.env.VITE_API_URL}/orders/seller/${sellerId}`);
+                    if (ordersRes.ok) {
+                        const ordersData = await ordersRes.json();
+                        setOrders(ordersData);
+                    }
+
+                    // Fetch Notifications
+                    fetchNotifications(sellerId);
+                }
+            } catch (e) {
+                console.error("Error loading data", e);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
     }, []);
 
     const handleSaveHours = async (updatedData) => {
@@ -97,19 +149,87 @@ const StoreOverview = () => {
         }
     };
 
-    // Mock Data based on requirement
+    const handleClearNotification = async (id) => {
+        try {
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/notifications/${id}/clear`, {
+                method: 'PUT'
+            });
+            if (res.ok) {
+                setNotifications(prev => prev.filter(n => n._id !== id));
+            }
+        } catch (error) {
+            console.error("Failed to clear notification", error);
+        }
+    };
+
+
+    // Calculate real stats
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const todayOrders = orders.filter(order => new Date(order.createdAt) >= todayStart);
+    const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.items?.reduce((s, i) => s + (i.price * i.quantity), 0) || 0), 0);
+    const activeOrdersCount = orders.filter(o => ['Placed', 'Processing', 'Shipped'].includes(o.status)).length;
+
     const stats = [
-        { label: 'Total Products', value: '0', change: '+0', icon: Package, color: 'text-blue-600', bg: 'bg-blue-100' },
-        { label: 'Orders Today', value: '0', change: '+0', icon: ShoppingBag, color: 'text-orange-600', bg: 'bg-orange-100' },
-        { label: 'Daily Revenue', value: '₹0', change: '+0%', icon: CreditCard, color: 'text-green-600', bg: 'bg-green-100' },
-        { label: 'Active Staff', value: '0', change: '+0', icon: Users, color: 'text-purple-600', bg: 'bg-purple-100' },
+        {
+            label: 'Total Products',
+            value: products.length.toString(),
+            change: `+${products.filter(p => new Date(p.createdAt) >= todayStart).length}`,
+            icon: Package,
+            color: 'text-blue-600',
+            bg: 'bg-blue-100'
+        },
+        {
+            label: 'Orders Today',
+            value: todayOrders.length.toString(),
+            change: `+${todayOrders.length}`,
+            icon: ShoppingBag,
+            color: 'text-orange-600',
+            bg: 'bg-orange-100'
+        },
+        {
+            label: 'Daily Revenue',
+            value: `₹${todayRevenue.toFixed(2)}`,
+            change: `+${todayOrders.length > 0 ? '100' : '0'}%`,
+            icon: CreditCard,
+            color: 'text-green-600',
+            bg: 'bg-green-100'
+        },
+        {
+            label: 'Active Orders',
+            value: activeOrdersCount.toString(),
+            change: `+${activeOrdersCount}`,
+            icon: Users,
+            color: 'text-purple-600',
+            bg: 'bg-purple-100'
+        },
     ];
 
-    const activeOrders = [
-    ];
+    const activeOrders = orders.filter(o => ['Placed', 'Processing', 'Shipped', 'Out for Delivery'].includes(o.status));
+    const lowStockProducts = products.filter(p => p.stockQuantity <= (p.lowStockThreshold || 10));
 
     return (
         <div className="space-y-6">
+            {/* Header Area */}
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">Dashboard Overview</h2>
+                    <p className="text-sm text-gray-500">Welcome back, {storeInfo?.sellerName || 'Seller'}!</p>
+                </div>
+                <Button
+                    variant="outline"
+                    className="relative"
+                    onClick={() => setIsNotificationsOpen(true)}
+                >
+                    <Bell className="h-5 w-5 text-gray-600" />
+                    {notifications.length > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white ring-2 ring-white">
+                            {notifications.length}
+                        </span>
+                    )}
+                </Button>
+            </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -194,41 +314,86 @@ const StoreOverview = () => {
                 <Card className="shadow-sm border-none">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Active Orders</CardTitle>
-                        <Badge variant="destructive" className="bg-red-500 hover:bg-red-600">0</Badge>
+                        <Badge variant="destructive" className="bg-red-500 hover:bg-red-600">{activeOrders.length}</Badge>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {activeOrders.map((order) => (
-                                <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <h4 className="font-semibold text-gray-800">{order.id}</h4>
-                                            <Badge className={`
-                                                ${order.status === 'preparing' ? 'bg-orange-100 text-orange-800 hover:bg-orange-100 border-none' : ''}
-                                                ${order.status === 'ready' ? 'bg-green-100 text-green-800 hover:bg-green-100 border-none' : ''}
-                                                ${order.status === 'delivered' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100 border-none' : ''}
-                                            `}>{order.status}</Badge>
+                            {activeOrders.length > 0 ? (
+                                activeOrders.slice(0, 5).map((order) => (
+                                    <div key={order._id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h4 className="font-semibold text-gray-800">#{order._id.slice(-6).toUpperCase()}</h4>
+                                                <Badge className={`
+                                                    ${order.status === 'Placed' ? 'bg-blue-100 text-blue-800 hover:bg-blue-100 border-none' : ''}
+                                                    ${order.status === 'Processing' ? 'bg-orange-100 text-orange-800 hover:bg-orange-100 border-none' : ''}
+                                                    ${order.status === 'Shipped' ? 'bg-green-100 text-green-800 hover:bg-green-100 border-none' : ''}
+                                                `}>{order.status}</Badge>
+                                            </div>
+                                            <p className="text-sm text-gray-500">{order.shippingAddress?.name || 'Customer'} • {order.items?.length || 0} items</p>
+                                            <p className="text-xs text-gray-400 mt-1">
+                                                {new Date(order.createdAt).toLocaleString('en-IN', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </p>
                                         </div>
-                                        <p className="text-sm text-gray-500">{order.customer} • {order.items}</p>
-                                        <p className="text-xs text-gray-400 mt-1">{order.time}</p>
+                                        <div className="text-right">
+                                            <p className="font-bold text-green-600 text-lg">₹{(order.items?.reduce((s, i) => s + (i.price * i.quantity), 0) || 0).toFixed(2)}</p>
+                                            <p className="text-xs text-gray-500 mt-1">{order.paymentMethod || 'COD'}</p>
+                                        </div>
                                     </div>
-                                    <div className="text-right">
-                                        <p className="font-bold text-green-600 text-lg">{order.amount}</p>
-                                        <p className="text-xs text-gray-500 mt-1">{order.eta}</p>
-                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    <ShoppingBag className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-sm">No active orders at the moment</p>
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* Low Stock Alerts */}
                 <Card className="shadow-sm border-none">
-                    <CardHeader>
+                    <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle>Low Stock Alerts</CardTitle>
+                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300">
+                            {lowStockProducts.length}
+                        </Badge>
                     </CardHeader>
                     <CardContent>
-
+                        <div className="space-y-3">
+                            {lowStockProducts.length > 0 ? (
+                                lowStockProducts.slice(0, 5).map((product) => (
+                                    <div key={product._id} className="flex items-center justify-between p-3 border border-yellow-200 rounded-lg bg-yellow-50/50 hover:bg-yellow-50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                                            <div>
+                                                <h4 className="font-medium text-gray-900 text-sm">{product.productName}</h4>
+                                                <p className="text-xs text-gray-500">{product.quantity} {product.unit} (Alert: {product.lowStockThreshold || 10})</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <Badge className={`mb-1 ${product.stockQuantity <= 5
+                                                ? 'bg-red-100 text-red-700 hover:bg-red-100'
+                                                : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
+                                                }`}>
+                                                {product.stockQuantity} left
+                                            </Badge>
+                                            <p className="text-xs text-gray-600">₹{product.sellingPrice}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 text-gray-500">
+                                    <Package className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                                    <p className="text-sm">All products are well-stocked!</p>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -239,6 +404,13 @@ const StoreOverview = () => {
                 onOpenChange={setIsHoursOpen}
                 initialData={storeInfo}
                 onSave={handleSaveHours}
+            />
+
+            <NotificationDialog
+                open={isNotificationsOpen}
+                onOpenChange={setIsNotificationsOpen}
+                notifications={notifications}
+                onClear={handleClearNotification}
             />
         </div>
     );

@@ -3,10 +3,12 @@ const { productsConn } = require('../server');
 
 const orderSchema = new mongoose.Schema({
     userId: { type: String, required: true },
+    orderId: { type: String, unique: true, sparse: true },
     items: [{
         productId: String,
         productName: String,
         quantity: Number,
+        unit: String,
         price: Number,
         image: String,
         sellerId: String
@@ -19,10 +21,17 @@ const orderSchema = new mongoose.Schema({
         city: String,
         state: String,
         zipCode: String,
-        country: String
+        country: String,
+        latitude: { type: Number },
+        longitude: { type: Number }
+    },
+    taxDetails: {
+        type: Map,
+        of: mongoose.Schema.Types.Mixed
     },
     paymentStatus: { type: String, default: 'Pending' }, // Pending, Paid, Failed
     paymentMethod: { type: String, enum: ['COD', 'Online'], default: 'Online' },
+    deliveryOtp: { type: String },
     razorpayOrderId: String,
     razorpayPaymentId: String,
     status: { type: String, default: 'Placed' }, // Placed, Processing, Shipped, Delivered

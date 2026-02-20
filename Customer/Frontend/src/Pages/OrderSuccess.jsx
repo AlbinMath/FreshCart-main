@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import Navbar from '../navbar/Navbar';
 import apiService from '../services/apiService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,6 +13,13 @@ export default function OrderSuccess() {
 
     useEffect(() => {
         fetchOrder();
+
+        // Poll for updates every 5 seconds
+        const intervalId = setInterval(() => {
+            fetchOrder(true); // Silent fetch
+        }, 5000);
+
+        return () => clearInterval(intervalId);
     }, [orderId]);
 
     useEffect(() => {
@@ -63,8 +69,9 @@ export default function OrderSuccess() {
         }
     };
 
-    const fetchOrder = async () => {
+    const fetchOrder = async (silent = false) => {
         try {
+            if (!silent) setLoading(true);
             // We need an endpoint to get order details. 
             // Reuse public or payment route? Let's assume we add one to paymentRoutes or reuse.
             // For now, I will implement a fetch from paymentRoutes.
@@ -75,7 +82,7 @@ export default function OrderSuccess() {
         } catch (error) {
             console.error("Failed to fetch order", error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -84,7 +91,7 @@ export default function OrderSuccess() {
 
         try {
             const doc = new jsPDF();
-            const invoiceId = order.razorpayOrderId || order._id.toString().slice(-6).toUpperCase();
+            const invoiceId = order.orderId || order.razorpayOrderId || order._id.toString().slice(-6).toUpperCase();
             const brandColor = [22, 163, 74]; // Green-600
 
             // -- Header Background --
@@ -152,7 +159,7 @@ export default function OrderSuccess() {
                 subtotal += itemTotal;
                 tableRows.push([
                     item.productName,
-                    item.quantity,
+                    item.quantity + (item.unit ? ' ' + item.unit : ''),
                     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.price),
                     new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(itemTotal)
                 ]);
@@ -178,29 +185,75 @@ export default function OrderSuccess() {
 
             // -- Totals Section --
             const finalY = doc.lastAutoTable.finalY + 10;
-            const summaryX = 140;
+            const summaryX = 120;
             const valX = 195;
-            const tax = order.totalAmount - subtotal;
 
             doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+
+            let currentY = finalY;
 
             // Subtotal
-            doc.text("Subtotal:", summaryX, finalY);
-            doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(subtotal), valX, finalY, { align: 'right' });
+            doc.text("Subtotal:", summaryX, currentY);
+            doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(subtotal), valX, currentY, { align: 'right' });
+            currentY += 6;
 
-            // Tax
-            doc.text("Tax (5%):", summaryX, finalY + 6);
-            doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(tax), valX, finalY + 6, { align: 'right' });
+            // Tax Details from taxDetails if available
+            if (order.taxDetails && order.taxDetails.breakdown) {
+                const taxDetails = order.taxDetails;
+
+                // Delivery Fee
+                if (taxDetails.breakdown.delivery && taxDetails.breakdown.delivery.value > 0) {
+                    doc.text("Delivery Fee:", summaryX, currentY);
+                    doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(taxDetails.breakdown.delivery.value), valX, currentY, { align: 'right' });
+                    currentY += 6;
+                }
+
+                // Platform Fee
+                if (taxDetails.breakdown.platformFee && taxDetails.breakdown.platformFee.value > 0) {
+                    doc.text("Platform Fee:", summaryX, currentY);
+                    doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(taxDetails.breakdown.platformFee.value), valX, currentY, { align: 'right' });
+                    currentY += 6;
+                }
+
+                // CGST
+                if (taxDetails.totals && taxDetails.totals.totalCGST) {
+                    doc.text("CGST (2.5%):", summaryX, currentY);
+                    doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(taxDetails.totals.totalCGST), valX, currentY, { align: 'right' });
+                    currentY += 6;
+                }
+
+                // SGST
+                if (taxDetails.totals && taxDetails.totals.totalSGST) {
+                    doc.text("SGST (2.5%):", summaryX, currentY);
+                    doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(taxDetails.totals.totalSGST), valX, currentY, { align: 'right' });
+                    currentY += 6;
+                }
+
+                // TCS
+                if (taxDetails.breakdown.tcs && taxDetails.breakdown.tcs.amount > 0) {
+                    doc.text("TCS (1%):", summaryX, currentY);
+                    doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(taxDetails.breakdown.tcs.amount), valX, currentY, { align: 'right' });
+                    currentY += 6;
+                }
+            } else {
+                // Fallback to old calculation if taxDetails not available
+                const tax = order.totalAmount - subtotal;
+                doc.text("Tax (5%):", summaryX, currentY);
+                doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(tax), valX, currentY, { align: 'right' });
+                currentY += 6;
+            }
 
             // Divider
             doc.setDrawColor(200, 200, 200);
-            doc.line(summaryX, finalY + 10, 200, finalY + 10);
+            doc.line(summaryX, currentY + 2, 200, currentY + 2);
+            currentY += 8;
 
             // Total
             doc.setFont('helvetica', 'bold');
             doc.setFontSize(12);
-            doc.text("Total:", summaryX, finalY + 16);
-            doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.totalAmount), valX, finalY + 16, { align: 'right' });
+            doc.text("Total:", summaryX, currentY);
+            doc.text(new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.totalAmount), valX, currentY, { align: 'right' });
 
             // Footer
             doc.setFontSize(9);
@@ -224,7 +277,7 @@ export default function OrderSuccess() {
 
     if (!order) return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
+
             <div className="flex-grow flex items-center justify-center text-center">
                 <p>Order not found</p>
                 <Link to="/" className="text-green-600 ml-2">Go Home</Link>
@@ -234,7 +287,7 @@ export default function OrderSuccess() {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans pb-12">
-            <Navbar />
+
             <div className="container mx-auto px-4 py-8">
                 <div className="bg-white max-w-4xl mx-auto p-8 rounded-lg shadow-lg">
 
@@ -257,7 +310,7 @@ export default function OrderSuccess() {
                             {order.status === 'Cancelled' ? 'Order Cancelled' : 'Order Placed Successfully!'}
                         </h1>
                         <p className="text-gray-600">
-                            Order ID: <span className="font-mono font-bold text-gray-800">{order.razorpayOrderId || order._id.slice(-6).toUpperCase()}</span>
+                            Order ID: <span className="font-mono font-bold text-gray-800">{order.orderId || order.razorpayOrderId || order._id.slice(-6).toUpperCase()}</span>
                         </p>
                     </div>
 
@@ -294,8 +347,8 @@ export default function OrderSuccess() {
                                 <div className="flex justify-between">
                                     <span>Order Status:</span>
                                     <span className={`px-2 py-0.5 rounded text-xs font-semibold ${order.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                                            order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                                                'bg-blue-100 text-blue-800'
+                                        order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                            'bg-blue-100 text-blue-800'
                                         }`}>
                                         {order.status}
                                     </span>
@@ -307,6 +360,17 @@ export default function OrderSuccess() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Delivery OTP Section */}
+                    {order.deliveryOtp && order.status !== 'Delivered' && (
+                        <div className="mb-8 bg-green-50 border border-green-200 p-6 rounded-lg text-center">
+                            <h2 className="text-xl font-bold text-green-800 mb-2">Delivery OTP</h2>
+                            <p className="text-gray-600 mb-2">Share this OTP with the delivery agent only upon receiving your order.</p>
+                            <div className="text-4xl font-mono font-bold text-green-700 tracking-widest bg-white inline-block px-6 py-3 rounded-lg border-2 border-green-300 shadow-sm">
+                                {order.deliveryOtp}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Order Items */}
                     <div className="mb-8">
@@ -323,7 +387,7 @@ export default function OrderSuccess() {
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="font-semibold text-gray-800">{item.productName}</h3>
-                                        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+                                        <p className="text-sm text-gray-500">Qty: {item.quantity} {item.unit || ''}</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="font-bold text-gray-800">
@@ -342,10 +406,47 @@ export default function OrderSuccess() {
                                 <span>Subtotal:</span>
                                 <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format((order.items || []).reduce((acc, item) => acc + (item.price * item.quantity), 0))}</span>
                             </div>
-                            <div className="w-full md:w-1/3 flex justify-between">
-                                <span>Tax (5%):</span>
-                                <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.totalAmount - (order.items || []).reduce((acc, item) => acc + (item.price * item.quantity), 0))}</span>
-                            </div>
+
+                            {order.taxDetails && order.taxDetails.breakdown ? (
+                                <>
+                                    {order.taxDetails.breakdown.delivery && order.taxDetails.breakdown.delivery.value > 0 && (
+                                        <div className="w-full md:w-1/3 flex justify-between">
+                                            <span>Delivery Fee:</span>
+                                            <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.taxDetails.breakdown.delivery.value)}</span>
+                                        </div>
+                                    )}
+                                    {order.taxDetails.breakdown.platformFee && order.taxDetails.breakdown.platformFee.value > 0 && (
+                                        <div className="w-full md:w-1/3 flex justify-between">
+                                            <span>Platform Fee:</span>
+                                            <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.taxDetails.breakdown.platformFee.value)}</span>
+                                        </div>
+                                    )}
+                                    {order.taxDetails.totals && order.taxDetails.totals.totalCGST > 0 && (
+                                        <div className="w-full md:w-1/3 flex justify-between">
+                                            <span>CGST (2.5%):</span>
+                                            <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.taxDetails.totals.totalCGST)}</span>
+                                        </div>
+                                    )}
+                                    {order.taxDetails.totals && order.taxDetails.totals.totalSGST > 0 && (
+                                        <div className="w-full md:w-1/3 flex justify-between">
+                                            <span>SGST (2.5%):</span>
+                                            <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.taxDetails.totals.totalSGST)}</span>
+                                        </div>
+                                    )}
+                                    {order.taxDetails.breakdown.tcs && order.taxDetails.breakdown.tcs.amount > 0 && (
+                                        <div className="w-full md:w-1/3 flex justify-between">
+                                            <span>TCS (1%):</span>
+                                            <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.taxDetails.breakdown.tcs.amount)}</span>
+                                        </div>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="w-full md:w-1/3 flex justify-between">
+                                    <span>Tax (5%):</span>
+                                    <span>{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.totalAmount - (order.items || []).reduce((acc, item) => acc + (item.price * item.quantity), 0))}</span>
+                                </div>
+                            )}
+
                             <div className="w-full md:w-1/3 flex justify-between font-bold text-lg text-gray-900 border-t pt-2 mt-1">
                                 <span>Total:</span>
                                 <span className="text-green-600">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.totalAmount)}</span>
@@ -377,6 +478,16 @@ export default function OrderSuccess() {
                                 </svg>
                                 Cancel Order
                             </button>
+                        )}
+
+                        {order.status === 'Delivered' && (
+                            <Link
+                                to={`/rate-order/${orderId}`}
+                                className="block w-full bg-yellow-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-yellow-600 transition text-center flex items-center justify-center gap-2"
+                            >
+                                <span className="text-xl">★</span>
+                                Rate Experience
+                            </Link>
                         )}
 
                         <Link

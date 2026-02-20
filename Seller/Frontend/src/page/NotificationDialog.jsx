@@ -1,0 +1,68 @@
+import React from 'react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/ui/dialog";
+import { Button } from '@/ui/button';
+import { ScrollArea } from "@/ui/scroll-area";
+import { Bell, Check, Trash2, AlertTriangle } from 'lucide-react';
+import { format } from 'date-fns';
+
+const NotificationDialog = ({ open, onOpenChange, notifications, onClear }) => {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-0">
+                <DialogHeader className="p-4 pb-2 border-b">
+                    <div className="flex items-center gap-2">
+                        <Bell className="h-5 w-5 text-yellow-600" />
+                        <DialogTitle>Notifications</DialogTitle>
+                    </div>
+                    <DialogDescription>
+                        {notifications.length} active alerts
+                    </DialogDescription>
+                </DialogHeader>
+
+                <ScrollArea className="flex-1 p-4">
+                    {notifications.length > 0 ? (
+                        <div className="space-y-3">
+                            {notifications.map((notif) => (
+                                <div key={notif._id} className="flex gap-3 p-3 bg-yellow-50 border border-yellow-100 rounded-lg group">
+                                    <div className="mt-0.5">
+                                        <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-gray-800 font-medium leading-tight">
+                                            {notif.message}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {format(new Date(notif.createdAt), 'MMM dd, h:mm a')}
+                                        </p>
+                                    </div>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-400 hover:text-green-600 hover:bg-green-50 shrink-0"
+                                        onClick={() => onClear(notif._id)}
+                                        title="Mark as Read"
+                                    >
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-gray-500">
+                            <Bell className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+                            <p>No new notifications</p>
+                        </div>
+                    )}
+                </ScrollArea>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+export default NotificationDialog;

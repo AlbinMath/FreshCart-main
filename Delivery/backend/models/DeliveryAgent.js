@@ -14,6 +14,13 @@ const deliveryAgentSchema = new mongoose.Schema({
     upiId: { type: String },
     accountHolderName: { type: String },
     status: { type: String, default: 'active' },
+    uniqueId: { type: String, unique: true, sparse: true },
+    isOnline: { type: Boolean, default: false },
+    location: {
+        lat: { type: Number },
+        lng: { type: Number },
+        lastUpdated: { type: Date }
+    }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Deliveryagent', deliveryAgentSchema, 'Deliveryagent');

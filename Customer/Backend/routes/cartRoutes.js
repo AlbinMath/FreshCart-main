@@ -32,13 +32,39 @@ router.post('/add', async (req, res) => {
     }
 });
 
+const Product = require('../models/Product'); // Ensure Product model is imported
+
 // Get Cart
 router.get('/:userId', async (req, res) => {
     try {
-        const cart = await Cart.findOne({ userId: req.params.userId });
+        const cart = await Cart.findOne({ userId: req.params.userId }).lean();
         if (!cart) {
             return res.json({ success: true, cart: { items: [] } });
         }
+
+        // Fetch valid products manualy to get sellerUniqueId
+        if (cart.items && cart.items.length > 0) {
+            const productIds = cart.items.map(item => item.productId);
+            const products = await Product.find({ _id: { $in: productIds } }).select('sellerUniqueId product_id _id unit').lean();
+
+            // Create a map for quick lookup
+            const productMap = {};
+            products.forEach(p => {
+                productMap[p._id.toString()] = p;
+            });
+
+            // Merge details into cart items
+            cart.items = cart.items.map(item => {
+                const productDefaults = productMap[item.productId.toString()];
+                return {
+                    ...item,
+                    sellerUniqueId: productDefaults ? productDefaults.sellerUniqueId : 'Unknown',
+                    product_id: productDefaults ? productDefaults.product_id : 'Unknown',
+                    unit: item.unit || (productDefaults ? productDefaults.unit : '')
+                };
+            });
+        }
+
         res.json({ success: true, cart });
     } catch (error) {
         console.error('Error fetching cart:', error);

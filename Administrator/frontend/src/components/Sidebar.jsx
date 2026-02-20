@@ -8,7 +8,8 @@ import {
     DollarSign,
     FileText,
     LogOut,
-    Bell
+    Bell,
+    Truck
 } from 'lucide-react';
 import NotificationDialog from './NotificationDialog';
 
@@ -23,6 +24,7 @@ const Sidebar = () => {
 
 
         { icon: DollarSign, label: 'Payment Requests', path: '/dashboard/payments' },
+        { icon: Truck, label: 'Premium Delivery', path: '/dashboard/premium-delivery' },
         { icon: FileText, label: 'Reports', path: '/dashboard/reports' },
     ];
 

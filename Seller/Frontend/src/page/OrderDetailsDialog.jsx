@@ -9,8 +9,11 @@ import {
 import { Badge } from "@/ui/badge";
 import { ScrollArea } from "@/ui/scroll-area";
 import { Separator } from "@/ui/separator";
-import { Package, User, MapPin, CreditCard, Calendar, Truck } from 'lucide-react';
+import { Package, User, MapPin, CreditCard, Calendar, Truck, Copy, Check } from 'lucide-react';
 import { format } from 'date-fns';
+import { Button } from "@/ui/button";
+import { toast } from "sonner";
+import { useState } from 'react';
 
 const OrderDetailsDialog = ({ open, onOpenChange, order }) => {
     if (!order) return null;
@@ -23,18 +26,37 @@ const OrderDetailsDialog = ({ open, onOpenChange, order }) => {
         createdAt,
         totalAmount,
         paymentMethod,
-        userId
+        userId,
+        orderId // New field
     } = order;
+
+    const [copiedId, setCopiedId] = useState(false);
+
+    const copyToClipboard = (text) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(true);
+        toast.success("Order ID copied to clipboard");
+        setTimeout(() => setCopiedId(false), 2000);
+    };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
-                <DialogHeader className="p-6 pb-4 border-b bg-gray-50/50">
+            <DialogContent className="max-w-4xl w-[95vw] md:w-full h-[90vh] md:max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-xl">
+                <DialogHeader className="p-6 pb-4 border-b bg-gray-50/50 shrink-0">
                     <div className="flex justify-between items-start">
                         <div className="space-y-1">
                             <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                                Order #{_id.slice(-6).toUpperCase()}
-                                <Badge variant="outline" className="text-xs font-normal">
+                                Order #{orderId || _id.slice(-6).toUpperCase()}
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 ml-1"
+                                    onClick={() => copyToClipboard(orderId || _id)}
+                                    title="Copy Order ID"
+                                >
+                                    {copiedId ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4 text-gray-400" />}
+                                </Button>
+                                <Badge variant="outline" className="text-xs font-normal ml-2">
                                     {format(new Date(createdAt), 'PPP p')}
                                 </Badge>
                             </DialogTitle>
@@ -43,8 +65,8 @@ const OrderDetailsDialog = ({ open, onOpenChange, order }) => {
                             </DialogDescription>
                         </div>
                         <Badge className={`text-sm px-3 py-1 ${status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                                status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                                    'bg-blue-100 text-blue-800'
+                            status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                'bg-blue-100 text-blue-800'
                             } border-0`}>
                             {status}
                         </Badge>
@@ -130,7 +152,7 @@ const OrderDetailsDialog = ({ open, onOpenChange, order }) => {
                                                     )}
                                                     <div>
                                                         <div className="font-medium text-gray-900">{item.productName}</div>
-                                                        <div className="text-xs text-gray-500">ID: {item.productId}</div>
+                                                        <div className="text-xs text-gray-500">ID: {item.product_id || item.productId}</div>
                                                     </div>
                                                 </div>
                                             </td>

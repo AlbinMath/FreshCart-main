@@ -2,80 +2,83 @@ import React from 'react';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
-    DialogDescription
 } from "@/ui/dialog";
-import { ScrollArea } from "@/ui/scroll-area";
-import { Bell, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 import { Button } from '@/ui/button';
+import { ScrollArea } from "@/ui/scroll-area";
+import { Bell, Check, Trash2, AlertTriangle, Info, ShoppingBag } from 'lucide-react';
+import { format } from 'date-fns';
 
+const NotificationDialog = ({ open, onOpenChange, notifications = [], onClear = () => { } }) => {
 
-const NotificationDialog = ({ open, onOpenChange, notifications = [] }) => {
+    // Helper to safely format date
+    const formatDate = (dateInput) => {
+        try {
+            if (!dateInput) return '';
+            const date = new Date(dateInput);
+            if (isNaN(date.getTime())) return typeof dateInput === 'string' ? dateInput : '';
+            return format(date, 'MMM dd, h:mm a');
+        } catch (e) {
+            return '';
+        }
+    };
 
     const getIcon = (type) => {
-        switch (type) {
-            case 'success': return <CheckCircle className="h-5 w-5 text-green-500" />;
-            case 'warning': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
-            default: return <Info className="h-5 w-5 text-blue-500" />;
-        }
+        if (type === 'low_stock') return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
+        if (type === 'info') return <ShoppingBag className="h-5 w-5 text-blue-600" />;
+        return <Bell className="h-5 w-5 text-gray-600" />;
     };
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[425px] flex flex-col max-h-[85vh]">
-                <DialogHeader className="pb-4 border-b">
-                    <DialogTitle className="flex items-center gap-2">
-                        <Bell className="h-5 w-5" /> Notifications
-                    </DialogTitle>
+            <DialogContent className="max-w-md max-h-[85vh] flex flex-col p-0">
+                <DialogHeader className="p-4 pb-2 border-b">
+                    <div className="flex items-center gap-2">
+                        <Bell className="h-5 w-5 text-gray-700" />
+                        <DialogTitle>Notifications</DialogTitle>
+                    </div>
                     <DialogDescription>
-                        Stay updated with your store activities.
+                        {notifications.length} active alerts
                     </DialogDescription>
                 </DialogHeader>
 
-                <ScrollArea className="flex-1 pr-4 -mr-4">
-                    <div className="space-y-4 py-4">
-                        {notifications.length > 0 ? (
-                            notifications.map((notification) => (
-                                <div
-                                    key={notification.id}
-                                    className={`flex gap-4 p-3 rounded-lg border transition-colors ${notification.read ? 'bg-white border-gray-100' : 'bg-blue-50/50 border-blue-100'}`}
-                                >
-                                    <div className="mt-1">
-                                        {getIcon(notification.type)}
+                <ScrollArea className="flex-1 p-4">
+                    {notifications.length > 0 ? (
+                        <div className="space-y-3">
+                            {notifications.map((notif) => (
+                                <div key={notif._id || notif.id} className="flex gap-3 p-3 bg-gray-50 border border-gray-100 rounded-lg group hover:bg-gray-100 transition-colors">
+                                    <div className="mt-0.5">
+                                        {getIcon(notif.type)}
                                     </div>
-                                    <div className="space-y-1 flex-1">
-                                        <div className="flex justify-between items-start">
-                                            <h4 className={`text-sm font-semibold ${notification.read ? 'text-gray-700' : 'text-gray-900'}`}>
-                                                {notification.title}
-                                            </h4>
-                                            <span className="text-[10px] text-gray-400 whitespace-nowrap ml-2">
-                                                {notification.time}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-gray-500 leading-relaxed">
-                                            {notification.description}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm text-gray-800 font-medium leading-tight">
+                                            {notif.message || notif.description || notif.title}
+                                        </p>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {formatDate(notif.createdAt || notif.time)}
                                         </p>
                                     </div>
-                                    {!notification.read && (
-                                        <div className="w-2 h-2 rounded-full bg-blue-500 mt-2" />
-                                    )}
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-8 w-8 text-gray-400 hover:text-green-600 hover:bg-green-50 shrink-0"
+                                        onClick={() => onClear(notif._id || notif.id)}
+                                        title="Mark as Read"
+                                    >
+                                        <Check className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                            ))
-                        ) : (
-                            <div className="text-center py-12 text-gray-400 space-y-2">
-                                <Bell className="h-12 w-12 mx-auto opacity-20" />
-                                <p>No new notifications</p>
-                            </div>
-                        )}
-                    </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12 text-gray-500">
+                            <Bell className="h-12 w-12 text-gray-200 mx-auto mb-3" />
+                            <p>No new notifications</p>
+                        </div>
+                    )}
                 </ScrollArea>
-
-                <div className="pt-4 border-t mt-auto">
-                    <Button variant="ghost" className="w-full text-xs text-gray-500 h-8">
-                        Mark all as read
-                    </Button>
-                </div>
             </DialogContent>
         </Dialog>
     );

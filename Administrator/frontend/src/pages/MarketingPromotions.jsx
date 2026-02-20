@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Tag, Clock, Package, Plus, Trash2, Calendar, Search } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const MarketingPromotions = () => {
     const [activeTab, setActiveTab] = useState('coupons');
@@ -61,6 +62,7 @@ const CouponsTab = () => {
     const [coupons, setCoupons] = useState([]);
     const [loading, setLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
     const [formData, setFormData] = useState({
         code: '',
         discountType: 'PERCENTAGE',
@@ -110,7 +112,7 @@ const CouponsTab = () => {
                     keywords: ''
                 });
             } else {
-                alert('Failed to create coupon');
+                toast.error('Failed to create coupon');
             }
         } catch (error) {
             console.error('Error creating coupon:', error);
@@ -118,12 +120,15 @@ const CouponsTab = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure?')) return;
         try {
             await fetch(`http://localhost:5003/api/marketing/coupons/${id}`, { method: 'DELETE' });
             fetchCoupons();
+            toast.success('Coupon deleted!');
         } catch (error) {
             console.error('Error deleting coupon:', error);
+            toast.error('Failed to delete coupon');
+        } finally {
+            setConfirmDeleteId(null);
         }
     };
 
@@ -303,12 +308,26 @@ const CouponsTab = () => {
                                     </span>
                                 </td>
                                 <td className="p-4">
-                                    <button
-                                        onClick={() => handleDelete(coupon._id)}
-                                        className="text-red-500 hover:text-red-700 p-1"
-                                    >
-                                        <Trash2 size={16} />
-                                    </button>
+                                    {confirmDeleteId === coupon._id ? (
+                                        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5">
+                                            <span className="text-xs text-red-700 font-medium whitespace-nowrap">Delete?</span>
+                                            <button
+                                                onClick={() => handleDelete(coupon._id)}
+                                                className="text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 font-semibold"
+                                            >Yes</button>
+                                            <button
+                                                onClick={() => setConfirmDeleteId(null)}
+                                                className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded hover:bg-gray-300"
+                                            >No</button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => setConfirmDeleteId(coupon._id)}
+                                            className="text-red-500 hover:text-red-700 p-1"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </td>
                             </tr>
                         ))}
@@ -330,6 +349,7 @@ const FlashSalesTab = () => {
     const [flashSales, setFlashSales] = useState([]);
     const [products, setProducts] = useState([]);
     const [showForm, setShowForm] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
     const [formData, setFormData] = useState({
         title: '',
         description: '',
@@ -399,12 +419,15 @@ const FlashSalesTab = () => {
         }
     };
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure?')) return;
         try {
             await fetch(`http://localhost:5003/api/marketing/flash-sales/${id}`, { method: 'DELETE' });
             fetchFlashSales();
+            toast.success('Flash sale deleted!');
         } catch (error) {
             console.error(error);
+            toast.error('Failed to delete flash sale');
+        } finally {
+            setConfirmDeleteId(null);
         }
     }
     return (
@@ -466,7 +489,7 @@ const FlashSalesTab = () => {
                                                         setFormData({ ...formData, bannerImage: json.secure_url });
                                                     } catch (err) {
                                                         console.error(err);
-                                                        alert("Image Upload Failed. Using manual URL fallback.");
+                                                        toast.error('Image Upload Failed. Using manual URL fallback.');
                                                     }
                                                 }}
                                             />
@@ -643,7 +666,15 @@ const FlashSalesTab = () => {
                             </div>
                             <div className="pt-2 border-t flex justify-between items-center mt-2">
                                 <span className="text-xs bg-gray-200 px-1 rounded">{sale.saleType}</span>
-                                <button onClick={() => handleDelete(sale._id)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"><Trash2 size={14} /></button>
+                                {confirmDeleteId === sale._id ? (
+                                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                                        <span className="text-xs text-red-700 font-medium">Delete?</span>
+                                        <button onClick={() => handleDelete(sale._id)} className="text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 font-semibold">Yes</button>
+                                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded hover:bg-gray-300">No</button>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => setConfirmDeleteId(sale._id)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"><Trash2 size={14} /></button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -662,6 +693,7 @@ const BundlesTab = () => {
     const [bundles, setBundles] = useState([]);
     const [products, setProducts] = useState([]);
     const [showForm, setShowForm] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
     const [selectedProducts, setSelectedProducts] = useState([{ productId: '', quantity: 1 }]);
     const [formData, setFormData] = useState({
         name: '',
@@ -709,7 +741,7 @@ const BundlesTab = () => {
         // Filter out empty rows
         const validProducts = selectedProducts.filter(p => p.productId);
         if (validProducts.length < 2) {
-            alert('Please select at least 2 products for a bundle');
+            toast.error('Please select at least 2 products for a bundle');
             return;
         }
         try {
@@ -731,12 +763,15 @@ const BundlesTab = () => {
         }
     };
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure?')) return;
         try {
             await fetch(`http://localhost:5003/api/marketing/bundles/${id}`, { method: 'DELETE' });
             fetchBundles();
+            toast.success('Bundle deleted!');
         } catch (error) {
             console.error(error);
+            toast.error('Failed to delete bundle');
+        } finally {
+            setConfirmDeleteId(null);
         }
     };
     return (
@@ -874,9 +909,17 @@ const BundlesTab = () => {
                         </div>
                         <div className="pt-4 border-t flex justify-between items-center text-sm text-gray-500">
                             <span>Created: {new Date(bundle.createdAt).toLocaleDateString()}</span>
-                            <button onClick={() => handleDelete(bundle._id)} className="text-red-500 hover:text-red-700 flex items-center gap-1">
-                                <Trash2 size={14} /> Remove
-                            </button>
+                            {confirmDeleteId === bundle._id ? (
+                                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                                    <span className="text-xs text-red-700 font-medium">Delete?</span>
+                                    <button onClick={() => handleDelete(bundle._id)} className="text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 font-semibold">Yes</button>
+                                    <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded hover:bg-gray-300">No</button>
+                                </div>
+                            ) : (
+                                <button onClick={() => setConfirmDeleteId(bundle._id)} className="text-red-500 hover:text-red-700 flex items-center gap-1">
+                                    <Trash2 size={14} /> Remove
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Loader2 } from 'lucide-react';
+import deliveryImg from '../img/delivery.png';
 
 const Login = () => {
     const [email, setEmail] = useState('');
@@ -39,6 +40,9 @@ const Login = () => {
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
             <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg">
                 <div className="text-center mb-8">
+                    <div className="flex justify-center mb-4">
+                        <img src={deliveryImg} alt="Delivery Logo" className="w-20 h-20 object-contain" />
+                    </div>
                     <h2 className="text-3xl font-bold text-gray-800">Welcome Back</h2>
                     <p className="text-gray-500">Sign in to continue delivering fresh happiness.</p>
                 </div>

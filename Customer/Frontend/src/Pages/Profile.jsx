@@ -1,6 +1,5 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import Navbar from '../navbar/Navbar';
 import { Link } from 'react-router-dom';
 
 export default function Profile() {
@@ -9,7 +8,7 @@ export default function Profile() {
     if (!currentUser) {
         return (
             <div className="min-h-screen bg-gray-50 flex flex-col">
-                <Navbar />
+
                 <div className="flex-grow flex items-center justify-center">
                     <div className="text-center">
                         <h2 className="text-2xl font-bold text-gray-900">Please info Log in to view profile</h2>
@@ -22,7 +21,7 @@ export default function Profile() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
+
             <div className="flex-grow container mx-auto px-4 py-8">
                 <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-md overflow-hidden">
                     <div className="bg-green-600 py-6 px-6 flex justify-between items-center">
@@ -94,6 +93,12 @@ export default function Profile() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
                                     </svg>
                                     Change Password
+                                </Link>
+                                <Link to="/report-issue" className="text-red-500 hover:text-red-600 font-medium text-sm flex items-center mt-3">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    Report an Issue
                                 </Link>
                             </div>
                         </div>

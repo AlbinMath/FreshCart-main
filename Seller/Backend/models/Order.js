@@ -54,6 +54,12 @@ const orderSchema = new mongoose.Schema({
         type: String,
         default: 'Placed',
         enum: ['Placed', 'Processing', 'Shipped', 'Delivered', 'Cancelled']
+    },
+
+    orderId: {
+        type: String,
+        unique: true,
+        sparse: true
     }
 
 }, {

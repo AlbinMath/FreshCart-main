@@ -7,7 +7,7 @@ export default function Footer() {
 
     return (
         <footer className="bg-gray-900 text-gray-300">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
                     {/* Brand */}
                     <div className="col-span-1 md:col-span-2">
@@ -54,6 +54,17 @@ export default function Footer() {
                                     <a href="https://www.linkedin.com/in/albinmathew2002" target="_blank" rel="noopener noreferrer" className="hover:text-green-500 transition break-all">
                                         www.linkedin.com/in/albinmathew2002
                                     </a>
+                                </div>
+                            </li>
+                            <li className="flex items-start gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-500 mt-1 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <div>
+                                    <span className="block text-sm text-gray-500 mb-1">Support</span>
+                                    <Link to="/report-issue" className="hover:text-green-500 transition">
+                                        Report an Issue
+                                    </Link>
                                 </div>
                             </li>
                         </ul>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Power, MapPin, Phone, Navigation, Package, DollarSign, Star, Clock, Calendar } from 'lucide-react';
 import ScheduleModal from '../components/ScheduleModal';
+import LoadingScreen from '../components/LoadingScreen';
 
 const Dashboard = () => {
     // State
@@ -27,41 +28,43 @@ const Dashboard = () => {
                 const todaySchedule = response.data.find(s => s.date === today);
 
                 if (todaySchedule && todaySchedule.slots.length > 0) {
-                    // Check if current time is within any slot
                     const now = new Date();
-                    const currentHour = now.getHours();
+                    const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-                    // Simple parsing logic: "6:00 AM – 8:00 AM"
-                    // We need to convert slot strings to ranges.
+                    // Logic: "10:00 AM - 12:00 PM"
                     const slotFound = todaySchedule.slots.find(slot => {
-                        const [startStr, endStr] = slot.split(' – ');
-                        const parseTime = (tStr) => {
-                            // "6:00 AM" -> 6, "4:00 PM" -> 16
-                            const [time, modifier] = tStr.split(' ');
+                        let parts = slot.split(' – ');
+                        if (parts.length < 2) parts = slot.split(' - ');
+                        if (parts.length < 2) return false;
+
+                        const [startStr, endStr] = parts;
+
+                        const parseMinutes = (tStr) => {
+                            if (!tStr) return -1;
+                            const [time, modifier] = tStr.trim().split(' ');
                             let [hours, minutes] = time.split(':');
                             if (hours === '12') hours = '00';
                             let h = parseInt(hours, 10);
-                            if (modifier === 'PM') h += 12;
-                            return h;
+                            if (modifier === 'PM' && h !== 12) h += 12;
+                            if (modifier === 'AM' && h === 12) h = 0;
+                            return h * 60 + parseInt(minutes, 10);
                         };
 
-                        const startH = parseTime(startStr);
-                        const endH = parseTime(endStr);
+                        const startM = parseMinutes(startStr);
+                        const endM = parseMinutes(endStr);
 
-                        // Current logic: strict hour check (ignoring minutes for simplicity or checking full date)
-                        // Assuming slots don't cross midnight
-                        return currentHour >= startH && currentHour < endH;
+                        return currentMinutes >= startM && currentMinutes < endM;
                     });
 
                     setActiveSlot(slotFound || null);
 
-                    // Auto-offline if slot ends? User said: "after the shadule are see it will off line now"
                     if (!slotFound && isOnline) {
-                        setIsOnline(false);
-                        alert("Your scheduled shift has ended. You are now offline.");
+                        // Force offline via API if slot ended
+                        handlePowerToggle(false);
                     }
                 } else {
                     setActiveSlot(null);
+                    if (isOnline) handlePowerToggle(false);
                 }
             } catch (err) {
                 console.error("Error fetching schedule:", err);
@@ -84,8 +87,7 @@ const Dashboard = () => {
                     (position) => {
                         const { latitude, longitude } = position.coords;
                         setUserLocation({ lat: latitude, lng: longitude });
-                        console.log(`Force Location Update: ${latitude}, ${longitude}`);
-                        // In a real app, send this to backend via socket/API
+                        // console.log(`Force Location Update: ${latitude}, ${longitude}`);
                     },
                     (error) => console.error("Location Error:", error),
                     { enableHighAccuracy: true }
@@ -100,16 +102,21 @@ const Dashboard = () => {
         };
     }, [isOnline]);
 
-    const handlePowerToggle = () => {
-        if (!isOnline) {
-            // Trying to go online
-            if (!activeSlot) {
-                const proceed = window.confirm("You are not scheduled for this time slot. Do you want to go online anyway?");
-                if (!proceed) return;
-            }
-            setIsOnline(true);
-        } else {
-            setIsOnline(false);
+    const handlePowerToggle = async (forceState = null) => {
+        const newState = forceState !== null ? forceState : !isOnline;
+
+        if (newState === true && !activeSlot) {
+            alert("You can only start your shift within your scheduled slot.");
+            return;
+        }
+
+        try {
+            await axios.put(`${import.meta.env.VITE_API_URL}/status/${agentId}`, { isOnline: newState });
+            setIsOnline(newState);
+            if (newState === false && forceState !== null) alert("Shift Ended. You are now offline.");
+        } catch (err) {
+            console.error("Error updating status:", err);
+            if (forceState === null) alert("Failed to change status.");
         }
     };
 
@@ -121,6 +128,10 @@ const Dashboard = () => {
     ];
 
     const currentAssignments = []; // No active assignments initially
+
+    // if (!scheduleLoaded) {
+    //     return <LoadingScreen text="Loading dashboard..." />;
+    // }
 
     return (
         <div className="space-y-6">
@@ -162,7 +173,7 @@ const Dashboard = () => {
                         Manage Schedule
                     </button>
                     <button
-                        onClick={handlePowerToggle}
+                        onClick={() => handlePowerToggle()}
                         className={`${isOnline ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white px-6 py-2 rounded-lg font-bold text-sm transition-all shadow-md flex items-center gap-2`}
                     >
                         <Power size={18} />

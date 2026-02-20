@@ -50,6 +50,10 @@ const productSchema = new mongoose.Schema({
         required: true,
         default: 0
     },
+    lowStockThreshold: {
+        type: Number,
+        default: 10
+    },
 
     // Specific Attributes
     preparationTime: {
@@ -104,6 +108,11 @@ const productSchema = new mongoose.Schema({
         type: String,
         required: true,
         index: true
+    },
+    product_id: {
+        type: String,
+        unique: true,
+        sparse: true // Allows null/undefined for existing docs until backfilled, though we plan to backfill immediately on access
     }
 }, { timestamps: true });
 

@@ -104,6 +104,10 @@ export default function ProductDetailsDialog({ product, onClose }) {
                                 <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
                                     {product.category}
                                 </span>
+                                <div className="mt-2 space-y-1 text-xs text-gray-500">
+                                    <p>Product ID: <span className="font-mono bg-gray-100 px-1 rounded">{product.product_id || product._id}</span></p>
+                                    <p>Seller ID: <span className="font-mono bg-gray-100 px-1 rounded">{product.sellerUniqueId || 'Unknown'}</span></p>
+                                </div>
                             </div>
                             <div className="text-right">
                                 <p className="text-3xl font-bold text-green-600">{formatPrice(product.sellingPrice)}</p>
@@ -124,7 +128,7 @@ export default function ProductDetailsDialog({ product, onClose }) {
                         <div className="bg-gray-50 p-3 rounded-lg">
                             <span className="block text-gray-400 text-xs uppercase">Stock Status</span>
                             <span className={`font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {product.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}
+                                {product.stockQuantity > 0 ? `${product.stockQuantity} ${product.unit || ''} ` : 'Out of Stock'}
                             </span>
                         </div>
                         {product.freshnessGuarantee && (

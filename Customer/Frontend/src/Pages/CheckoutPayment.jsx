@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
-import Navbar from '../navbar/Navbar';
 import apiService from '../services/apiService';
 import { cartService } from '../services/cartService';
 
@@ -35,12 +34,56 @@ export default function CheckoutPayment() {
         try {
             setLoading(true);
             const cartRes = await cartService.getCart(currentUser.uid);
+            let taxDetails = null;
+            let subtotal = 0;
+            let deliveryFee = 50;
+            let platformFee = 5; // Reduced platform fee
+
             if (cartRes.success && cartRes.cart) {
                 const items = cartRes.cart.items || [];
                 setCartItems(items);
-                const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-                const tax = subtotal * 0.05;
-                setSummary({ subtotal, tax, total: subtotal + tax });
+                subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+                // Dynamic Delivery Fee Logic
+                if (subtotal > 1000) {
+                    deliveryFee = 0;
+                } else if (subtotal >= 600) {
+                    deliveryFee = 10;
+                } else {
+                    deliveryFee = 50;
+                }
+
+                // Call Tax Service
+                try {
+                    const taxRes = await fetch('http://localhost:5005/api/v1/tax/calculate', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            items: items.map(i => ({ ...i, category: 'basic' })), // Defaulting to basic (5%) as requested
+                            deliveryFee,
+                            platformFee
+                        })
+                    });
+                    const taxData = await taxRes.json();
+
+                    if (taxData.success) {
+                        taxDetails = taxData.data;
+                        // Use values from tax service (which includes 18% delivery tax etc)
+                        setSummary({
+                            subtotal: taxDetails.totals.subtotal,
+                            tax: taxDetails.totals.totalTax,
+                            total: taxDetails.totals.grandTotal,
+                            details: taxDetails
+                        });
+                    } else {
+                        throw new Error("Tax calculation failed");
+                    }
+                } catch (taxError) {
+                    console.error("Tax service error:", taxError);
+                    // Fallback to basic calculation if service fails
+                    const tax = subtotal * 0.05;
+                    setSummary({ subtotal, tax, total: subtotal + tax + deliveryFee + platformFee });
+                }
             }
 
             const userRes = await apiService.get(`/users/${currentUser.uid}`);
@@ -76,7 +119,8 @@ export default function CheckoutPayment() {
         try {
             setLoading(true);
             const orderRes = await apiService.post('/payment/create-order', {
-                amount: summary.total
+                amount: summary.total,
+                userId: currentUser.uid
             });
 
             if (!orderRes.success) {
@@ -102,6 +146,7 @@ export default function CheckoutPayment() {
                             userId: currentUser.uid,
                             items: cartItems,
                             totalAmount: summary.total,
+                            taxDetails: summary.details, // Pass detailed tax info
                             shippingAddress: selectedAddress
                         });
 
@@ -140,6 +185,7 @@ export default function CheckoutPayment() {
                 userId: currentUser.uid,
                 items: cartItems,
                 totalAmount: summary.total,
+                taxDetails: summary.details, // Pass detailed tax info
                 shippingAddress: selectedAddress
             });
 
@@ -176,7 +222,7 @@ export default function CheckoutPayment() {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
-            <Navbar />
+
             <div className="container mx-auto px-4 py-8">
                 <h1 className="text-3xl font-bold text-gray-800 mb-8">Checkout & Payment</h1>
 
@@ -204,7 +250,7 @@ export default function CheckoutPayment() {
                                         </div>
                                         <div className="flex-1">
                                             <h3 className="font-semibold text-gray-800">{item.productName}</h3>
-                                            <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
+                                            <p className="text-sm text-gray-500">Quantity: {item.quantity} {item.unit || ''}</p>
                                             <p className="text-sm font-medium text-green-600">
                                                 {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(item.price)} x {item.quantity}
                                             </p>
@@ -286,10 +332,38 @@ export default function CheckoutPayment() {
                                     <span className="text-gray-600">Subtotal</span>
                                     <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.subtotal)}</span>
                                 </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-600">Tax (5%)</span>
-                                    <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.tax)}</span>
-                                </div>
+                                {summary.details ? (
+                                    <>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">
+                                                Delivery Fee
+                                                {summary.details.breakdown.delivery.value === 0 && <span className="text-green-600 ml-1">(Free!)</span>}
+                                            </span>
+                                            <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.details.breakdown.delivery.value)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Platform Fee</span>
+                                            <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.details.breakdown.platformFee.value)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">CGST (2.5%)</span>
+                                            <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.details.totals.totalCGST)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">SGST (2.5%)</span>
+                                            <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.details.totals.totalSGST)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">TCS (1%)</span>
+                                            <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.details.breakdown.tcs.amount)}</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-600">Tax Estimate</span>
+                                        <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.tax)}</span>
+                                    </div>
+                                )}
                                 <div className="border-t pt-2 flex justify-between text-lg font-bold">
                                     <span>Total Amount</span>
                                     <span className="text-green-600">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.total)}</span>

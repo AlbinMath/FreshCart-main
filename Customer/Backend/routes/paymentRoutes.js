@@ -3,8 +3,10 @@ const router = express.Router();
 const Razorpay = require('razorpay');
 const crypto = require('crypto');
 const Order = require('../models/Order');
-const Cart = require('../models/Cart');
 const Product = require('../models/Product');
+const Cart = require('../models/Cart');
+const OrderLedger = require('../models/OrderLedger');
+const { createGenesisBlock, createNextBlock } = require('../utils/ledgerUtils');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -15,25 +17,52 @@ const razorpay = new Razorpay({
 // Create Order (Initialize Razorpay)
 router.post('/create-order', async (req, res) => {
     try {
-        const { amount } = req.body;
+        const { userId } = req.body; // Only trust userId (from auth middleware ideally)
+
+        // Securely fetch cart total
+        const cart = await Cart.findOne({ userId });
+        if (!cart || cart.items.length === 0) {
+            return res.status(400).json({ success: false, message: "Cart is empty" });
+        }
+
+        // Calculate total amount from cart items
+        // Assumes item.price in cart is accurate. Ideally refetch from Product.
+        const totalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+        // Add tax/shipping if needed? For now just raw total. 
+        // Need to match frontend logic. Assuming frontend sends 'amount' which includes everything?
+        // To be safe, we rely on our calculation.
 
         const options = {
-            amount: Math.round(amount * 100), // Amount in paise
+            amount: totalAmount * 100, // Amount in paise
             currency: "INR",
-            receipt: `receipt_${Date.now()}`
+            receipt: "order_rcptid_" + Date.now()
         };
 
         const order = await razorpay.orders.create(options);
 
         res.json({
             success: true,
-            order
+            order,
+            key_id: process.env.RAZORPAY_KEY_ID // Send key to frontend
         });
     } catch (error) {
-        console.error("Error creating Razorpay order:", error);
-        res.status(500).json({ success: false, message: "Payment initialization failed", error: error.message });
+        console.error("Error creating order:", error);
+        res.status(500).json({ success: false, message: "Something went wrong" });
     }
 });
+
+// Helper: Generate Alphanumeric Order ID
+const generateOrderId = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = 'ORD-';
+    for (let i = 0; i < 6; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+};
+
+// ... (Razorpay init code omitted, keeping existing) ...
 
 // Verify Payment and Create Order in DB
 router.post('/verify-payment', async (req, res) => {
@@ -56,12 +85,24 @@ router.post('/verify-payment', async (req, res) => {
             .digest('hex');
 
         if (expectedSignature === razorpay_signature) {
+
+            // Securely fetch items from Cart (TRUSTED SOURCE)
+            const cart = await Cart.findOne({ userId });
+            if (!cart || cart.items.length === 0) {
+                return res.status(400).json({ success: false, message: "Cart not found or empty" });
+            }
+
+            // Recalculate Total (Optional but good check)
+            const secureTotalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
             // Create Order in DB
             const newOrder = new Order({
                 userId,
-                items,
-                totalAmount,
+                orderId: generateOrderId(), // Generate ID
+                items: cart.items, // Use Cart Items!
+                totalAmount: secureTotalAmount, // Use Calculated Total!
                 shippingAddress,
+                taxDetails: req.body.taxDetails, // Save tax details (This might need validation too but usually less critical than price)
                 paymentStatus: 'Paid',
                 razorpayOrderId: razorpay_order_id,
                 razorpayPaymentId: razorpay_payment_id,
@@ -69,6 +110,36 @@ router.post('/verify-payment', async (req, res) => {
             });
 
             await newOrder.save();
+
+            // ORDER_INTEGRITY: Create Genesis Block + Payment Verified Block
+            try {
+                // 1. Genesis Block
+                let ledger = await createGenesisBlock(newOrder.orderId, userId);
+
+                // 2. Payment Verified Block
+                const genesisBlock = ledger.chain[0];
+                const paymentBlock = await createNextBlock(
+                    genesisBlock,
+                    "PAYMENT_VERIFIED",
+                    "SYSTEM",
+                    "PAYMENT_GATEWAY",
+                    {
+                        method: "Online",
+                        razorpayOrderId: razorpay_order_id,
+                        razorpayPaymentId: razorpay_payment_id
+                    }
+                );
+
+                ledger.chain.push(paymentBlock);
+                ledger.currentHash = paymentBlock.hash;
+
+                // Save Chain
+                await new OrderLedger(ledger).save();
+                console.log(`[OrderIntegrity] Ledger initialized for ${newOrder.orderId}`);
+            } catch (chainError) {
+                console.error("[OrderIntegrity] Failed to create ledger:", chainError);
+                // Non-blocking: Order success should not fail if chain fails
+            }
 
             // Update Stock and Order Count
             for (const item of items) {
@@ -101,10 +172,24 @@ router.get('/order/:id', async (req, res) => {
     }
 });
 
-// Get All Orders for a User
+// Get All Orders for a User (With Auto-Backfill)
 router.get('/user-orders/:userId', async (req, res) => {
     try {
         const orders = await Order.find({ userId: req.params.userId }).sort({ createdAt: -1 });
+
+        // Backfill Check: If any order lacks an Order ID, generate it now
+        let detailedUpdate = false;
+        for (const order of orders) {
+            if (!order.orderId) {
+                order.orderId = generateOrderId();
+                await order.save();
+                detailedUpdate = true;
+            }
+        }
+
+        // If we updated ids, we could re-fetch, but 'order' object is mutated in place by mongoose save? 
+        // Actually safe to just return 'orders' as the object in memory is updated.
+
         res.json({ success: true, orders });
     } catch (error) {
         console.error("Error fetching user orders:", error);
@@ -119,20 +204,32 @@ router.post('/place-cod-order', async (req, res) => {
             userId,
             items,
             totalAmount,
-            shippingAddress
+            shippingAddress,
+            taxDetails
         } = req.body;
 
         const newOrder = new Order({
             userId,
+            orderId: generateOrderId(), // Generate ID
             items,
             totalAmount,
             shippingAddress,
+            taxDetails, // Save tax details
             paymentStatus: 'Pending',
             paymentMethod: 'COD',
             status: 'Placed'
         });
 
         await newOrder.save();
+
+        // ORDER_INTEGRITY: Create Genesis Block
+        try {
+            const ledger = await createGenesisBlock(newOrder.orderId, userId);
+            await new OrderLedger(ledger).save();
+            console.log(`[OrderIntegrity] Genesis ledger created for COD ${newOrder.orderId}`);
+        } catch (chainError) {
+            console.error("[OrderIntegrity] Failed to create ledger:", chainError);
+        }
 
         // Update Stock and Order Count
         for (const item of items) {

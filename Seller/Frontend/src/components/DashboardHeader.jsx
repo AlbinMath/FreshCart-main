@@ -34,8 +34,11 @@ const DashboardHeader = () => {
 
         // Connect to Socket.io
         if (sellerId && !socketRef.current) {
-            // Assuming the backend is running on the URL defined in .env or localhost:5002 if dev
-            const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+            // Assuming the backend is running on the URL defined in .env or localhost:5002
+            // We need to extract the origin (e.g., http://localhost:5002) from VITE_API_URL (e.g., http://localhost:5002/api)
+            // to ensure we connect to the default namespace, not /api namespace
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5002';
+            const socketUrl = apiUrl.startsWith('http') ? new URL(apiUrl).origin : apiUrl;
 
             socketRef.current = io(socketUrl);
 

@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import { User, Store, Phone, Mail, MapPin, Truck, Clock, Briefcase, FileText, CreditCard, Smartphone, Fingerprint, Tags } from 'lucide-react';
 import { Button } from '@/ui/button';
-import { Badge } from '@/ui/badge'; // Ensure Badge is imported or use standard tailwind
+import { Badge } from '@/ui/badge';
 import { useNavigate } from 'react-router-dom';
+import LocationPicker from '../components/LocationPicker';
 
 const Profile = () => {
     const navigate = useNavigate();
@@ -12,8 +13,11 @@ const Profile = () => {
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         businessType: '',
+        storeName: '',
         storeAddress: '',
         pinCode: '',
+        latitude: null,
+        longitude: null,
         operatingHours: '',
         productCategories: [],
         contactPersonName: '',
@@ -86,8 +90,11 @@ const Profile = () => {
                             setFormData({
                                 sellerId: freshData._id,
                                 businessType: freshData.businessType || '',
+                                storeName: freshData.storeName || '',
                                 storeAddress: freshData.storeAddress || '',
                                 pinCode: freshData.pinCode || '',
+                                latitude: freshData.latitude || null,
+                                longitude: freshData.longitude || null,
                                 displayOperatingHours: formatHoursForDisplay(freshData.operatingHours),
                                 productCategories: freshData.productCategories || [],
                                 contactPersonName: freshData.contactPersonName || '',
@@ -105,8 +112,11 @@ const Profile = () => {
                     setFormData({
                         sellerId: initialData._id,
                         businessType: initialData.businessType || '',
+                        storeName: initialData.storeName || '',
                         storeAddress: initialData.storeAddress || '',
                         pinCode: initialData.pinCode || '',
+                        latitude: initialData.latitude || null,
+                        longitude: initialData.longitude || null,
                         displayOperatingHours: formatHoursForDisplay(initialData.operatingHours),
                         productCategories: initialData.productCategories || [],
                         contactPersonName: initialData.contactPersonName || '',
@@ -226,62 +236,108 @@ const Profile = () => {
                         Basic Information
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InfoItem icon={User} label="Seller Name" value={seller.sellerName || seller.name} />
-                    <InfoItem icon={Fingerprint} label="Seller Unique ID" value={seller.sellerUniqueId || 'Not Generated'} />
+                <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <InfoItem icon={User} label="Seller Name" value={seller.sellerName || seller.name} />
+                        <InfoItem icon={Fingerprint} label="Seller Unique ID" value={seller.sellerUniqueId || 'Not Generated'} />
 
-                    {isEditing ? (
-                        <div className="p-4 bg-gray-50 rounded-lg space-y-2 border border-green-200">
-                            <label className="text-sm font-medium text-gray-700">Business Type</label>
-                            <select
-                                name="businessType"
-                                value={formData.businessType}
-                                onChange={handleInputChange}
-                                className="w-full p-2 border rounded-md focus:ring-green-500 focus:border-green-500"
-                            >
-                                <option value="">Select Type</option>
-                                {BUSINESS_TYPES.map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
-                        </div>
-                    ) : (
-                        <InfoItem icon={Briefcase} label="Business Type" value={seller.businessType} />
-                    )}
+                        {isEditing ? (
+                            <div className="p-4 bg-gray-50 rounded-lg space-y-2 border border-green-200">
+                                <label className="text-sm font-medium text-gray-700">Business Type</label>
+                                <select
+                                    name="businessType"
+                                    value={formData.businessType}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded-md focus:ring-green-500 focus:border-green-500"
+                                >
+                                    <option value="">Select Type</option>
+                                    {BUSINESS_TYPES.map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <InfoItem icon={Briefcase} label="Business Type" value={seller.businessType} />
+                        )}
 
-                    <InfoItem icon={Store} label="Store Name" value={seller.storeName} />
 
-                    {isEditing ? (
-                        <div className="md:col-span-2 p-4 bg-gray-50 rounded-lg space-y-2 border border-green-200">
-                            <label className="text-sm font-medium text-gray-700">Store Address</label>
-                            <textarea
-                                name="storeAddress"
-                                value={formData.storeAddress}
-                                onChange={handleInputChange}
-                                className="w-full p-2 border rounded-md focus:ring-green-500 focus:border-green-500"
-                                rows="3"
-                                placeholder="Enter full store address"
-                            />
-                            <div className="mt-2">
-                                <label className="text-sm font-medium text-gray-700">Pin Code</label>
+                        {isEditing ? (
+                            <div className="p-4 bg-gray-50 rounded-lg space-y-2 border border-green-200">
+                                <label className="text-sm font-medium text-gray-700">Store Name</label>
                                 <input
                                     type="text"
-                                    name="pinCode"
-                                    value={formData.pinCode}
+                                    name="storeName"
+                                    value={formData.storeName}
                                     onChange={handleInputChange}
-                                    className="w-full p-2 border rounded-md mt-1"
-                                    placeholder="Enter Pin Code"
+                                    className="w-full p-2 border rounded-md focus:ring-green-500 focus:border-green-500"
+                                    placeholder="Enter store name"
+                                />
+                            </div>
+                        ) : (
+                            <InfoItem icon={Store} label="Store Name" value={seller.storeName} />
+                        )}
+                    </div>
+
+                    {isEditing ? (
+                        <div className="p-4 bg-gray-50 rounded-lg space-y-4 border border-green-200">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-700">Store Address</label>
+                                <textarea
+                                    name="storeAddress"
+                                    value={formData.storeAddress}
+                                    onChange={handleInputChange}
+                                    className="w-full p-2 border rounded-md focus:ring-green-500 focus:border-green-500"
+                                    rows="3"
+                                    placeholder="Enter full store address"
+                                />
+                                <div className="mt-2">
+                                    <label className="text-sm font-medium text-gray-700">Pin Code</label>
+                                    <input
+                                        type="text"
+                                        name="pinCode"
+                                        value={formData.pinCode}
+                                        onChange={handleInputChange}
+                                        className="w-full p-2 border rounded-md mt-1"
+                                        placeholder="Enter Pin Code"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Location Picker in Edit Mode */}
+                            <LocationPicker
+                                lat={formData.latitude}
+                                lng={formData.longitude}
+                                onLocationSelect={(pos) => {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        latitude: pos.lat,
+                                        longitude: pos.lng,
+                                        storeAddress: pos.display_name || prev.storeAddress,
+                                        pinCode: pos.address?.postcode || prev.pinCode
+                                    }));
+                                }}
+                                isEditing={true}
+                            />
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <InfoItem
+                                icon={MapPin}
+                                label="Address"
+                                value={seller.storeAddress && seller.storeAddress.includes(seller.pinCode)
+                                    ? seller.storeAddress
+                                    : `${seller.storeAddress || ''}${seller.pinCode ? ' - ' + seller.pinCode : ''}`}
+                            />
+
+                            {/* Location View Mode */}
+                            <div className="p-4 bg-gray-50 rounded-lg">
+                                <LocationPicker
+                                    lat={seller.latitude}
+                                    lng={seller.longitude}
+                                    isEditing={false}
                                 />
                             </div>
                         </div>
-                    ) : (
-                        <InfoItem
-                            icon={MapPin}
-                            label="Address"
-                            value={seller.storeAddress && seller.storeAddress.includes(seller.pinCode)
-                                ? seller.storeAddress
-                                : `${seller.storeAddress || ''}${seller.pinCode ? ' - ' + seller.pinCode : ''}`}
-                        />
                     )}
                 </CardContent>
             </Card>
@@ -314,7 +370,7 @@ const Profile = () => {
                 </CardContent>
             </Card>
 
-            {/* Legal & Licensing - Usually read-only or requires verify so keeping read-only for now unless asked */}
+            {/* Legal & Licensing */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -357,7 +413,7 @@ const Profile = () => {
                                 <div className="p-4 bg-gray-50 rounded-lg space-y-2 border border-green-200">
                                     <label className="text-sm font-medium text-gray-700">Operating Hours</label>
                                     <div className="p-2 border rounded-md bg-gray-100 text-gray-500 text-sm">
-                                        {formatHoursForDisplay(seller.operatingHours)}
+                                        {formData.displayOperatingHours}
                                         <span className="block text-xs mt-1 text-orange-600">(Manage via Store Overview)</span>
                                     </div>
                                 </div>

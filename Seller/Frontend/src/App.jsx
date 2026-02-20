@@ -1,6 +1,9 @@
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 
-// We will create this file next
+// Loading Screen
+import LoadingScreen from './components/LoadingScreen';
+
 import Login from './page/login';
 import ForgotPassword from './page/forgot-password';
 import Profile from './page/profile';
@@ -14,6 +17,21 @@ import Reports from './page/Reports';
 import Orders from './page/Orders';
 
 function App() {
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Simulate initial loading process
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 2000); // 2 seconds loading time
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (isLoading) {
+        return <LoadingScreen />;
+    }
+
     return (
         <Router>
             <Routes>

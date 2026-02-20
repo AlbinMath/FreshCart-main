@@ -1,0 +1,111 @@
+# =============================================
+# FreshCart - Root .gitignore
+# =============================================
+
+# ----- Environment Variables -----
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+**/.env
+**/.env.*
+
+# ----- Node.js / npm -----
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+yarn.lock
+package-lock.json
+.npm
+.pnp
+.pnp.js
+
+# ----- Production Builds -----
+dist/
+build/
+**/dist/
+**/build/
+.next/
+out/
+
+# ----- Python -----
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+*.egg
+.eggs/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ----- Logs -----
+logs/
+*.log
+lerna-debug.log*
+
+# ----- IDEs & Editors -----
+.vscode/
+.idea/
+*.swp
+*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ----- OS Generated -----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ----- Uploads / Temp Files -----
+**/uploads/
+**/temp/
+**/tmp/
+
+# ----- Cloudinary / Storage -----
+backend/uploads/
+**/backend/uploads/
+
+# ----- Testing -----
+coverage/
+.nyc_output/
+
+# ----- Misc -----
+*.tgz
+*.tar.gz
+*.zip
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache

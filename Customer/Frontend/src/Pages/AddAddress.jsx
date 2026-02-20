@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import Navbar from '../navbar/Navbar';
-import Footer from '../navbar/Footer';
 import apiService from '../services/apiService';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -59,6 +57,7 @@ export default function AddAddress() {
     const [error, setError] = useState('');
     const [addresses, setAddresses] = useState([]);
     const [editingId, setEditingId] = useState(null);
+    const [mapLoading, setMapLoading] = useState(false);
 
     const dispatchFrom = location.state?.from || '/profile';
 
@@ -170,12 +169,36 @@ export default function AddAddress() {
         }));
     };
 
-    const handleLocationSelect = (latlng) => {
+    const handleLocationSelect = async (latlng) => {
         setFormData(prev => ({
             ...prev,
             latitude: latlng.lat,
             longitude: latlng.lng
         }));
+
+        setMapLoading(true);
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`);
+            const data = await response.json();
+
+            if (data && data.address) {
+                const addr = data.address;
+                setFormData(prev => ({
+                    ...prev,
+                    houseNumber: addr.house_number || prev.houseNumber,
+                    street: addr.road || addr.pedestrian || addr.suburb || prev.street,
+                    city: addr.city || addr.town || addr.village || addr.county || prev.city,
+                    state: addr.state || prev.state,
+                    zipCode: addr.postcode || prev.zipCode,
+                    country: addr.country || prev.country
+                }));
+            }
+        } catch (error) {
+            console.error("Error fetching address from coordinates:", error);
+            // Optional: showToast("Could not fetch address details", "error");
+        } finally {
+            setMapLoading(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -224,7 +247,7 @@ export default function AddAddress() {
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
+
             <div className="flex-grow container mx-auto px-4 py-8">
                 <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-md">
                     <div className="flex justify-between items-center mb-6">
@@ -349,6 +372,7 @@ export default function AddAddress() {
                             {formData.latitude && (
                                 <p className="text-xs text-green-600">
                                     Location selected: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                                    {mapLoading && <span className="ml-2 text-gray-500">Fetching address details...</span>}
                                 </p>
                             )}
                         </div>
@@ -440,7 +464,7 @@ export default function AddAddress() {
                     </div>
                 )}
             </div>
-            <Footer />
+
         </div>
     );
 }

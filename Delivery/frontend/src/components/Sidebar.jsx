@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { LayoutGrid, Truck, Navigation, DollarSign, MapPin, Settings, LogOut } from 'lucide-react';
+import deliveryImg from '../img/delivery.png';
 
 const Sidebar = () => {
     const navigate = useNavigate();
@@ -28,10 +29,8 @@ const Sidebar = () => {
         <div className="h-screen w-64 bg-white border-r border-gray-200 flex flex-col fixed left-0 top-0 z-50">
             {/* Logo Area */}
             <div className="p-6">
-                <div className="flex items-center gap-2">
-                    <div className="bg-green-600 text-white p-2 rounded-full">
-                        <span className="font-bold text-xl">FC</span>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <img src={deliveryImg} alt="Logo" className="w-10 h-10 object-contain" />
                     <span className="text-green-600 text-2xl font-bold">Fresh Cart</span>
                 </div>
 

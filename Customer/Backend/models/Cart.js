@@ -10,6 +10,7 @@ const cartSchema = new mongoose.Schema({
         quantity: { type: Number, required: true, min: 1 },
         image: { type: String },
         stock: { type: Number }, // To check availability
+        unit: { type: String },
         sellerId: { type: mongoose.Schema.Types.ObjectId }
     }]
 }, {

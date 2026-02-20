@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import DashboardHeader from '@/components/DashboardHeader';
+import { Toaster } from 'sonner';
 
 const DashboardLayout = () => {
     const navigate = useNavigate();
@@ -23,6 +24,7 @@ const DashboardLayout = () => {
             <main className="ml-64 p-6 pt-6">
                 <Outlet />
             </main>
+            <Toaster />
         </div>
     );
 };

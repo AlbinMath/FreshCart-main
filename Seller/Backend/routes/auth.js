@@ -157,20 +157,31 @@ router.post('/generate-id', async (req, res) => {
 // @access  Protected
 router.put('/update-profile', async (req, res) => {
     // NOTE: In a real app, use middleware to get ID from token.
-    // For now, adhering to the pattern, we might expect sellerId in body or header if no auth middleware is used.
-    // BUT login returns token. Let's try to verify token if possible, or use the _id sent from frontend.
-    // Checking previous routes, 'generate-id' used 'sellerId' from body. Let's do the same for consistency until middleware is improved.
-    // However, for security, the frontend should send the ID.
 
     const {
-        sellerId, // Passed from frontend for now
+        sellerId,
+        sellerName, // Allow updating display name
+        storeName,  // Allow updating store name
+        phoneNumber,
         businessType,
         storeAddress,
+        pinCode, // Added
+        latitude, // Added
+        longitude, // Added
         operatingHours,
         productCategories,
         contactPersonName,
         deliveryMethod,
-        storeLeave // Destructure storeLeave
+        storeLeave,
+        // Legal & Licensing
+        businessRegistrationNumberOrGST,
+        fssaiLicenseNumber,
+        panNumber,
+        // Banking
+        bankAccountHolderName,
+        bankAccountNumber,
+        ifscCode,
+        upiId
     } = req.body;
 
     try {
@@ -181,36 +192,45 @@ router.put('/update-profile', async (req, res) => {
         }
 
         // Update fields if provided
+        if (sellerName) seller.sellerName = sellerName;
+        if (sellerName) seller.name = sellerName;
+        if (storeName) seller.storeName = storeName;
+
+        if (phoneNumber) seller.phoneNumber = phoneNumber;
         if (businessType) seller.businessType = businessType;
         if (storeAddress) seller.storeAddress = storeAddress;
+        if (pinCode) seller.pinCode = pinCode;
+        if (latitude) seller.latitude = latitude;
+        if (longitude) seller.longitude = longitude;
         if (operatingHours) seller.operatingHours = operatingHours;
         if (productCategories) seller.productCategories = productCategories;
         if (contactPersonName) seller.contactPersonName = contactPersonName;
         if (deliveryMethod) seller.deliveryMethod = deliveryMethod;
-        if (storeLeave) seller.storeLeave = storeLeave; // Update storeLeave
+        if (storeLeave) seller.storeLeave = storeLeave;
+
+        if (businessRegistrationNumberOrGST) seller.businessRegistrationNumberOrGST = businessRegistrationNumberOrGST;
+        if (fssaiLicenseNumber) seller.fssaiLicenseNumber = fssaiLicenseNumber;
+        if (panNumber) seller.panNumber = panNumber;
+
+        if (bankAccountHolderName) seller.bankAccountHolderName = bankAccountHolderName;
+        if (bankAccountNumber) seller.bankAccountNumber = bankAccountNumber;
+        if (ifscCode) seller.ifscCode = ifscCode;
+        if (upiId) seller.upiId = upiId;
 
         // Save
         const updatedSeller = await seller.save();
 
+        // Return full updated profile (excluding password)
+        const sellerObj = updatedSeller.toObject();
+        delete sellerObj.passwordHash;
+
         res.json({
-            _id: updatedSeller._id,
-            name: updatedSeller.name,
-            email: updatedSeller.email,
-            storeName: updatedSeller.storeName,
-            role: updatedSeller.role,
-            // Return all updated fields to refresh frontend
-            businessType: updatedSeller.businessType,
-            storeAddress: updatedSeller.storeAddress,
-            operatingHours: updatedSeller.operatingHours,
-            productCategories: updatedSeller.productCategories,
-            contactPersonName: updatedSeller.contactPersonName,
-            deliveryMethod: updatedSeller.deliveryMethod,
-            storeLeave: updatedSeller.storeLeave,
-            sellerUniqueId: updatedSeller.sellerUniqueId,
-            token: generateToken(updatedSeller._id), // Optional: issue new token if needed, or just keep old
+            ...sellerObj,
+            token: generateToken(updatedSeller._id) // Keep token fresh
         });
 
     } catch (error) {
+        console.error("Update Profile Error:", error);
         res.status(500).json({ message: error.message });
     }
 });

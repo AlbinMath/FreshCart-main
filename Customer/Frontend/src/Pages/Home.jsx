@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { Link, useNavigate } from 'react-router-dom';
-import Navbar from '../navbar/Navbar';
-import Footer from '../navbar/Footer';
 import EmailVerification from '../components/EmailVerification';
 import { cartService } from '../services/cartService';
 import apiService from '../services/apiService';
@@ -20,16 +19,15 @@ function Home() {
     const [selectedCategory, setSelectedCategory] = useState('all');
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [stock, setStock] = useState(false);
     const [addingToCart, setAddingToCart] = useState(new Set());
     const [viewingProduct, setViewingProduct] = useState(null);
 
 
     // Fetch products from the public API
     useEffect(() => {
-        const fetchProducts = async () => {
+        const fetchProducts = async (isBackground = false) => {
             try {
-                setLoading(true);
+                if (!isBackground) setLoading(true);
                 // Use the apiService for consistent API calls
                 const response = await apiService.get('/public/products', {}, false);
 
@@ -37,18 +35,24 @@ function Home() {
                     setProducts(response.products);
                 } else {
                     // Fallback for demo if API returns nothing valid/server error
-                    setProducts([]);
+                    if (!isBackground) setProducts([]);
                     // setError('Failed to fetch products from server');
                 }
             } catch (err) {
                 console.error('Error fetching products:', err);
-                // setError('Failed to load products from server');
+                if (!isBackground) setError('Failed to load products from server');
             } finally {
-                setLoading(false);
+                if (!isBackground) setLoading(false);
             }
         };
 
         fetchProducts();
+
+        const intervalId = setInterval(() => {
+            fetchProducts(true);
+        }, 5000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
     // ... (Filter logic remains same, abstracted below for brevity or assume kept unless replaced) ...
@@ -58,25 +62,22 @@ function Home() {
 
     const filteredProducts = products
         .filter(product => {
+            // Always hide out-of-stock products
+            const stockValue = Number(product.stockQuantity ?? 0);
+            if (stockValue <= 0) return false;
+
             const productCategory = String(product.category || 'other').toLowerCase();
             const matchesCategory = selectedCategory === 'all' || productCategory === selectedCategory;
             const name = String(product.productName || '').toLowerCase();
             const desc = String(product.description || '').toLowerCase();
             const term = searchTerm.toLowerCase();
             const matchesSearch = name.includes(term) || desc.includes(term);
-            const stockValue = Number(product.stockQuantity ?? 0);
-            const matchesStock = !stock || stockValue > 0; // Fixed logic: if stock checked, must be > 0
-            return matchesCategory && matchesSearch && matchesStock;
+            return matchesCategory && matchesSearch;
         });
 
+    // All displayed products are in-stock; sort by stock quantity descending
     const sortedFilteredProducts = [...filteredProducts].sort((a, b) => {
-        const aStock = Number(a.stockQuantity ?? 0);
-        const bStock = Number(b.stockQuantity ?? 0);
-        const aIn = aStock > 0;
-        const bIn = bStock > 0;
-        if (aIn && !bIn) return -1;
-        if (!aIn && bIn) return 1;
-        return bStock - aStock;
+        return Number(b.stockQuantity ?? 0) - Number(a.stockQuantity ?? 0);
     });
 
     const groupedByCategory = sortedFilteredProducts.reduce((acc, p) => {
@@ -99,6 +100,8 @@ function Home() {
         }).format(price);
     };
 
+    const { showToast } = useToast();
+
     const handleAddToCart = async (product) => {
         if (!currentUser) {
             navigate('/login');
@@ -107,7 +110,7 @@ function Home() {
 
         const profile = getUserProfile();
         if (profile?.role !== 'customer') {
-            alert('Only customers can add items to cart');
+            showToast('Only customers can add items to cart', 'error');
             return;
         }
 
@@ -122,15 +125,16 @@ function Home() {
                 quantity: 1,
                 image: product.images && product.images.length > 0 ? product.images[0] : null,
                 stock: product.stockQuantity,
+                unit: product.unit,
                 sellerId: product.sellerId
             };
 
             await cartService.addToCart(currentUser.uid, cartItem);
 
-            alert('Product added to cart successfully!');
+            showToast('Product added to cart successfully!', 'success');
         } catch (err) {
             console.error('Error adding to cart:', err);
-            alert(err.message || 'Failed to add product to cart');
+            showToast(err.message || 'Failed to add product to cart', 'error');
         } finally {
             setAddingToCart(prev => {
                 const newSet = new Set(prev);
@@ -142,7 +146,7 @@ function Home() {
 
     return (
         <div className="min-h-screen bg-gray-50">
-            <Navbar />
+
 
             <div className="container mx-auto px-4 py-8">
                 {/* Email Verification Banner */}
@@ -207,7 +211,7 @@ function Home() {
                         <div className="space-y-10">
                             {categoriesForDisplay.map((category) => (
                                 <div key={category}>
-                                    <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+                                    <h3 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
                                         {category.charAt(0).toUpperCase() + category.slice(1)}
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -223,12 +227,12 @@ function Home() {
 
                                                 {/* Product Info */}
                                                 <div className="p-4">
-                                                    <h3 className="font-semibold text-lg text-gray-800 mb-2 line-clamp-2">
+                                                    <h3 className="font-semibold text-lg text-center text-gray-800 mb-2 line-clamp-2">
                                                         {product.productName}
                                                     </h3>
 
                                                     {product.description && (
-                                                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                                                        <p className="text-gray-600 text-sm mb-3 line-clamp-2 text-justify">
                                                             {product.description}
                                                         </p>
                                                     )}
@@ -256,7 +260,7 @@ function Home() {
                                                             ? 'bg-green-100 text-green-800'
                                                             : 'bg-red-100 text-red-800'
                                                             }`}>
-                                                            {product.stockQuantity > 0 ? `${product.stockQuantity} in stock` : 'Out of stock'}
+                                                            {product.stockQuantity > 0 ? `${product.stockQuantity} ${product.unit || ''} in stock` : 'Out of stock'}
                                                         </span>
                                                     </div>
 
@@ -337,8 +341,7 @@ function Home() {
                     </div>
                 )}
             </div>
-            {/* Footer */}
-            <Footer />
+
 
             {/* Product Details Modal */}
             <ProductDetailsDialog

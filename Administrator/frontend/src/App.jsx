@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layout/DashboardLayout';
 import LoginPage from './pages/Login';
@@ -8,14 +9,31 @@ import Orders from './pages/Orders';
 import Payments from './pages/Payments';
 import Reports from './pages/Reports';
 import MarketingPromotions from './pages/MarketingPromotions';
+import PremiumDelivery from './pages/PremiumDelivery';
+import SplashScreen from './pages/SplashScreen';
 
 import ProtectedRoute from './components/ProtectedRoute';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
+    const [isLoading, setIsLoading] = useState(true);
 
+    useEffect(() => {
+        // Simulate initial loading sequence
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 2500); // 2.5 seconds splash screen
+
+        return () => clearTimeout(timer);
+    }, []);
+
+    if (isLoading) {
+        return <SplashScreen />;
+    }
 
     return (
         <Router>
+            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
             <Routes>
                 <Route path="/login" element={<LoginPage />} />
 
@@ -31,6 +49,7 @@ function App() {
                         <Route path="payments" element={<Payments />} />
                         <Route path="reports" element={<Reports />} />
                         <Route path="marketing" element={<MarketingPromotions />} />
+                        <Route path="premium-delivery" element={<PremiumDelivery />} />
 
                         {/* Add other routes here */}
                     </Route>

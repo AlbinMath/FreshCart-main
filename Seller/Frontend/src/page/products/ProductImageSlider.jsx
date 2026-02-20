@@ -1,18 +1,47 @@
 import React, { useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, UploadCloud } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { cn } from '@/ui/utils';
 
-const ProductImageSlider = ({ images = [], fallbackImage, alt, className }) => {
+const ProductImageSlider = ({ images = [], fallbackImage, alt, className, onUpload }) => {
+    const [isUploading, setIsUploading] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     // Normalize images array
     const imageList = (images && images.length > 0) ? images : (fallbackImage ? [fallbackImage] : []);
 
+    const handleUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file || !onUpload) return;
+
+        setIsUploading(true);
+        try {
+            await onUpload(file);
+        } catch (error) {
+            console.error("Upload failed", error);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     if (imageList.length === 0) {
         return (
-            <div className="h-48 w-full bg-gray-100 flex items-center justify-center text-gray-400">
-                No Image
+            <div className="h-48 w-full bg-gray-100 flex items-center justify-center text-gray-400 relative group">
+                {onUpload ? (
+                    <label className="cursor-pointer flex flex-col items-center gap-2 hover:text-green-600 transition-colors w-full h-full justify-center">
+                        <UploadCloud className="h-8 w-8 opacity-50 group-hover:opacity-100 transition-opacity" />
+                        <span className="text-xs font-medium">{isUploading ? 'Uploading...' : 'Click to Upload Image'}</span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleUpload}
+                            disabled={isUploading}
+                        />
+                    </label>
+                ) : (
+                    "No Image"
+                )}
             </div>
         );
     }
@@ -30,7 +59,7 @@ const ProductImageSlider = ({ images = [], fallbackImage, alt, className }) => {
     };
 
     return (
-        <div className={cn("h-48 w-full bg-gray-100 relative group overflow-hidden", className)}>
+        <div className={cn("h-64 w-full bg-gray-100 relative group overflow-hidden", className)}>
             <img
                 src={imageList[currentIndex]}
                 alt={alt}

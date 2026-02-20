@@ -26,6 +26,7 @@ const productSchema = new mongoose.Schema({
     storeName: { type: String },
     storeAddress: { type: String },
     sellerUniqueId: { type: String },
+    product_id: { type: String },
     shelfLife: { type: String },
     approvalStatus: { type: String }
 }, {

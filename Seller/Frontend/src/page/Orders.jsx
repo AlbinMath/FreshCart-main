@@ -36,20 +36,14 @@ const Orders = () => {
         }
     };
 
-    const fetchOrders = async () => {
+    const fetchOrders = async (isBackground = false) => {
         try {
-            setLoading(true);
+            if (!isBackground) setLoading(true);
             const sellerInfoStr = localStorage.getItem('sellerInfo');
             if (!sellerInfoStr) return;
 
             const parsed = JSON.parse(sellerInfoStr);
             const seller = parsed.user || parsed;
-
-            // In the DB screenshot, sellerId in items array looks like a MongoObjId or similar string "693ed..."
-            // It's likely the seller._id.
-            // Let's try using seller._id first. 
-            // If the user's DB uses sellerUniqueId in the items array, we switch back.
-            // Given the screenshot value "693ed...", it looks more like an ID than "seller-1".
             const idToFetch = seller._id;
 
             if (!idToFetch) return;
@@ -63,12 +57,20 @@ const Orders = () => {
         } catch (error) {
             console.error("Failed to fetch orders:", error);
         } finally {
-            setLoading(false);
+            if (!isBackground) setLoading(false);
         }
     };
 
     useEffect(() => {
+        // Initial fetch
         fetchOrders();
+
+        // Poll every 10 seconds
+        const interval = setInterval(() => {
+            fetchOrders(true);
+        }, 10000);
+
+        return () => clearInterval(interval);
     }, []);
 
     const getStatusColor = (status) => {
@@ -128,7 +130,25 @@ const Orders = () => {
                                 <tbody className="divide-y">
                                     {orders.map((order) => (
                                         <tr key={order._id} className="hover:bg-gray-50 transition-colors">
-                                            <td className="px-4 py-3 font-medium text-gray-900">#{order._id.slice(-6).toUpperCase()}</td>
+                                            <td className="px-4 py-3 font-medium text-gray-900">
+                                                <div className="flex items-center gap-1 group">
+                                                    <span>{order.orderId || order._id.slice(-6).toUpperCase()}</span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigator.clipboard.writeText(order.orderId || order._id);
+                                                            // Could add toast here if desired
+                                                        }}
+                                                        title="Copy ID"
+                                                    >
+                                                        <span className="sr-only">Copy</span>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-copy"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+                                                    </Button>
+                                                </div>
+                                            </td>
                                             <td className="px-4 py-3">{format(new Date(order.createdAt), 'MMM dd, yyyy')}</td>
                                             <td className="px-4 py-3">
                                                 <div className="font-medium">{order.shippingAddress?.name || 'Unknown'}</div>
@@ -175,7 +195,7 @@ const Orders = () => {
                             <p className="text-sm text-gray-500 max-w-sm mt-1 mb-4">
                                 You haven't received any orders yet. When customers place orders, they will appear here.
                             </p>
-                            <Button variant="outline" onClick={fetchOrders}>Refresh List</Button>
+                            <Button variant="outline" onClick={() => fetchOrders()}>Refresh List</Button>
                         </div>
                     )}
                 </CardContent>

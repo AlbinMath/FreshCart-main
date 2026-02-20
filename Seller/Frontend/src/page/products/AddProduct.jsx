@@ -64,13 +64,14 @@ const AddProduct = () => {
         discount: '',
         quantity: '',
         unit: '',
+        minimumOrderQuantity: '1',
         stockQuantity: '',
+        lowStockThreshold: '10',
         preparationTime: '',
         cutType: '',
         meatType: '',
         freshnessGuarantee: '',
         storageInstructions: '',
-
         shelfLife: '',
         status: 'active', // Default status
     });
@@ -118,69 +119,54 @@ const AddProduct = () => {
         if (isEditMode) {
             const fetchProduct = async () => {
                 try {
-                    const sellerInfoStr = localStorage.getItem('sellerInfo');
-                    if (!sellerInfoStr) return;
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/products/${id}`);
+                    if (!response.ok) {
+                        throw new Error('Product not found');
+                    }
+                    const product = await response.json();
 
-                    const parsed = JSON.parse(sellerInfoStr);
-                    const seller = parsed.user || parsed;
-                    const sellerUniqueId = seller.sellerUniqueId;
+                    setFormData({
+                        productName: product.productName || '',
+                        description: product.description || '',
+                        category: product.category || '',
+                        sellingPrice: product.sellingPrice || '',
+                        originalPrice: product.originalPrice || '',
+                        discount: product.discount || '',
+                        quantity: product.quantity || '',
+                        unit: product.unit || '',
+                        minimumOrderQuantity: product.minimumOrderQuantity || '1',
+                        stockQuantity: product.stockQuantity || '',
+                        lowStockThreshold: product.lowStockThreshold || '10',
+                        preparationTime: product.preparationTime || '',
+                        cutType: product.cutType || '',
+                        meatType: product.meatType || '',
+                        freshnessGuarantee: product.freshnessGuarantee || '',
+                        storageInstructions: product.storageInstructions || '',
+                        shelfLife: product.shelfLife || '',
+                        status: product.status || 'active',
+                    });
 
-                    if (!sellerUniqueId) {
-                        setError("Seller ID missing. Please login again.");
+                    if (product.status === 'forced-inactive') {
+                        setError("This product has been flagged as forced-inactive by the admin and cannot be edited.");
+                        setTimeout(() => navigate('/products'), 3000);
                         return;
                     }
 
-                    // Fetch all products for seller and find the one to edit
-                    // Ideal would be GET /api/products/:id but this works with existing endpoints
-                    const response = await fetch(`${import.meta.env.VITE_API_URL}/products/seller/${sellerUniqueId}`);
-                    const products = await response.json();
-
-                    if (Array.isArray(products)) {
-                        const product = products.find(p => p._id === id);
-                        if (product) {
-                            setFormData({
-                                productName: product.productName || '',
-                                description: product.description || '',
-                                category: product.category || '',
-                                sellingPrice: product.sellingPrice || '',
-                                originalPrice: product.originalPrice || '',
-                                discount: product.discount || '',
-                                quantity: product.quantity || '',
-                                unit: product.unit || '',
-                                minimumOrderQuantity: product.minimumOrderQuantity || '1',
-                                stockQuantity: product.stockQuantity || '',
-                                preparationTime: product.preparationTime || '',
-                                cutType: product.cutType || '',
-                                meatType: product.meatType || '',
-                                freshnessGuarantee: product.freshnessGuarantee || '',
-                                storageInstructions: product.storageInstructions || '',
-                                shelfLife: product.shelfLife || '',
-                                status: product.status || 'active',
-                            });
-
-                            if (product.status === 'forced-inactive') {
-                                setError("This product has been flagged as forced-inactive by the admin and cannot be edited.");
-                                // Optional: Redirect after a delay or just show error and hide form
-                                setTimeout(() => navigate('/products'), 3000);
-                                return;
-                            }
-
-                            if (product.features && product.features.length > 0) {
-                                setFeatures(product.features);
-                            }
-
-                            // Handle Images
-                            let currentImages = [];
-                            if (product.images && product.images.length > 0) {
-                                currentImages = product.images;
-                            } else if (product.image) {
-                                // Fallback for old single image
-                                currentImages = [product.image];
-                            }
-                            setExistingImages(currentImages);
-                            setImagePreviews(currentImages);
-                        }
+                    if (product.features && product.features.length > 0) {
+                        setFeatures(product.features);
                     }
+
+                    // Handle Images
+                    let currentImages = [];
+                    if (product.images && product.images.length > 0) {
+                        currentImages = product.images;
+                    } else if (product.image) {
+                        // Fallback for old single image
+                        currentImages = [product.image];
+                    }
+                    setExistingImages(currentImages);
+                    setImagePreviews(currentImages);
+
                 } catch (err) {
                     console.error("Failed to fetch product", err);
                     setError("Failed to load product details.");
@@ -218,15 +204,16 @@ const AddProduct = () => {
             return;
         }
 
-        const newFiles = [...imageFiles, file];
-        setImageFiles(newFiles);
+        // Use functional update to avoid stale closure
+        setImageFiles(prev => [...prev, file]);
 
         const reader = new FileReader();
         reader.onloadend = () => {
-            setImagePreviews([...imagePreviews, reader.result]);
+            setImagePreviews(prev => [...prev, reader.result]);
         };
         reader.readAsDataURL(file);
 
+        // Reset so same file can be re-selected
         e.target.value = '';
     };
 
@@ -483,6 +470,10 @@ const AddProduct = () => {
                                 <div className="space-y-2">
                                     <Label>Available Stock (Qty)</Label>
                                     <Input type="number" name="stockQuantity" required placeholder="0" value={formData.stockQuantity} onChange={handleChange} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Low Stock Alert (Qty)</Label>
+                                    <Input type="number" name="lowStockThreshold" placeholder="10" value={formData.lowStockThreshold} onChange={handleChange} />
                                 </div>
                             </div>
                         </CardContent>

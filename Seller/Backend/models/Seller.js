@@ -43,6 +43,8 @@ const sellerSchema = new mongoose.Schema({
     // Address & Location
     storeAddress: { type: String },
     pinCode: { type: String },
+    latitude: { type: Number },
+    longitude: { type: Number },
 
     // Operations
     deliveryMethod: { type: String },

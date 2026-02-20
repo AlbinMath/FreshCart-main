@@ -24,6 +24,8 @@ app.use('/api/users', require('./routes/users'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/marketing', require('./routes/marketing'));
+app.use('/api/antigravity', require('./routes/ledgerRoutes'));
+app.use('/api/premium-plans', require('./routes/premiumPlans'));
 
 
 app.get('/', (req, res) => {
