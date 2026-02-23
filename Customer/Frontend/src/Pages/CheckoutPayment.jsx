@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLocation, useNavigate } from 'react-router-dom';
 import apiService from '../services/apiService';
 import { cartService } from '../services/cartService';
+import DeliveryEstimate from '../components/DeliveryEstimate';
 
 export default function CheckoutPayment() {
     const { currentUser } = useAuth();
@@ -286,6 +287,28 @@ export default function CheckoutPayment() {
 
                     {/* Right Column: Payment & Summary */}
                     <div className="lg:w-1/3 space-y-6">
+
+                        {/* ✅ Estimated Delivery Time */}
+                        <div className="bg-white p-4 rounded-lg shadow-md">
+                            <h2 className="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                                <span>🕐</span> Delivery Estimate
+                            </h2>
+                            {cartItems.length > 0 && selectedAddress ? (
+                                <DeliveryEstimate
+                                    storeAddress={cartItems[0]?.storeAddress || null}
+                                    prepMins={parseFloat(cartItems[0]?.preparationTime) || 0}
+                                    savedAddress={selectedAddress}
+                                />
+                            ) : (
+                                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
+                                    <div className="flex items-center gap-2 text-sm text-blue-500">
+                                        <div className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                        Loading estimate...
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
                         {/* Payment Method Selection */}
                         <div className="bg-white p-6 rounded-lg shadow-md">
                             <h2 className="text-xl font-semibold mb-4 text-gray-800">Payment Method</h2>

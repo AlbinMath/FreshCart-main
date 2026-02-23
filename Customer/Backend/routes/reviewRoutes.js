@@ -8,6 +8,7 @@ router.post('/create', async (req, res) => {
         const {
             userId,
             orderId,
+            productId,
             productRate,
             qualityRate,
             deliveryRate,
@@ -18,19 +19,20 @@ router.post('/create', async (req, res) => {
             deliveryReview
         } = req.body;
 
-        if (!userId || !orderId || !deliveryRate || !overallRate || !reviewText) {
+        if (!userId || !orderId || !productId || !deliveryRate || !overallRate || !reviewText) {
             return res.status(400).json({ success: false, message: "Missing required fields" });
         }
 
-        // Check if review already exists for this order
-        const existingReview = await Review.findOne({ orderId });
+        // Check if review already exists for this product in this order
+        const existingReview = await Review.findOne({ orderId, productId });
         if (existingReview) {
-            return res.status(400).json({ success: false, message: "Review already submitted for this order" });
+            return res.status(400).json({ success: false, message: "Review already submitted for this product" });
         }
 
         const newReview = new Review({
             userId,
             orderId,
+            productId,
             productRate,
             qualityRate,
             deliveryRate,
@@ -46,6 +48,23 @@ router.post('/create', async (req, res) => {
         res.json({ success: true, message: "Review submitted successfully", review: newReview });
     } catch (error) {
         console.error("Error creating review:", error);
+        res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// Get Review by Order ID and Product ID
+router.get('/order/:orderId/product/:productId', async (req, res) => {
+    try {
+        const review = await Review.findOne({
+            orderId: req.params.orderId,
+            productId: req.params.productId
+        });
+        if (!review) {
+            return res.status(404).json({ success: false, message: "Review not found" });
+        }
+        res.json({ success: true, review });
+    } catch (error) {
+        console.error("Error fetching review:", error);
         res.status(500).json({ success: false, message: "Server error" });
     }
 });

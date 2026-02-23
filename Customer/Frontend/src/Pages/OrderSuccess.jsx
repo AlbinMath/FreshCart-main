@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import apiService from '../services/apiService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import DeliveryEstimate from '../components/DeliveryEstimate';
 
 export default function OrderSuccess() {
     const { orderId } = useParams();
@@ -374,6 +375,20 @@ export default function OrderSuccess() {
 
                     {/* Order Items */}
                     <div className="mb-8">
+                        {/* ✅ Estimated Delivery Time */}
+                        {order.status !== 'Cancelled' && order.status !== 'Delivered' && (
+                            <div className="mb-6 bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
+                                <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                                    <span>🕓</span> Estimated Delivery Time
+                                </h2>
+                                <DeliveryEstimate
+                                    storeAddress={(order.items?.[0] || {}).storeAddress || null}
+                                    prepMins={parseFloat((order.items?.[0] || {}).preparationTime) || 0}
+                                    savedAddress={order.shippingAddress}
+                                />
+                            </div>
+                        )}
+
                         <h2 className="font-bold text-xl text-gray-800 mb-4">Order Items</h2>
                         <div className="space-y-4">
                             {(order.items || []).map((item, index) => (

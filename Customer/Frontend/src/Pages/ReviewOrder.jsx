@@ -5,22 +5,40 @@ import Navbar from '../navbar/Navbar';
 import apiService from '../services/apiService';
 
 export default function ReviewOrder() {
-    const { orderId } = useParams();
+    const { orderId, productId } = useParams();
     const { currentUser } = useAuth();
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [productDetails, setProductDetails] = useState(null);
 
     useEffect(() => {
         if (orderId && currentUser) {
             fetchReview();
         }
-    }, [orderId, currentUser]);
+        if (productId) {
+            fetchProductDetails();
+        }
+    }, [orderId, productId, currentUser]);
+
+    const fetchProductDetails = async () => {
+        try {
+            const response = await apiService.get(`/public/product/${productId}`);
+            if (response.success) {
+                setProductDetails(response.product);
+            }
+        } catch (error) {
+            console.error("Failed to fetch product details:", error);
+        }
+    };
 
     const fetchReview = async () => {
         try {
-            const response = await apiService.get(`/reviews/order/${orderId}`);
+            const url = productId
+                ? `/reviews/order/${orderId}/product/${productId}`
+                : `/reviews/order/${orderId}`;
+            const response = await apiService.get(url);
             if (response.success && response.review) {
                 const review = response.review;
                 setFormData({
@@ -90,15 +108,18 @@ export default function ReviewOrder() {
         try {
             setLoading(true);
             let response;
+            const submitData = {
+                userId: currentUser.uid,
+                orderId,
+                productId,
+                ...formData
+            };
 
             if (isEditing) {
-                response = await apiService.put(`/reviews/update/${orderId}`, formData);
+                // Update endpoint might need productId too if we want to be specific
+                response = await apiService.put(`/reviews/update/${orderId}`, submitData);
             } else {
-                response = await apiService.post('/reviews/create', {
-                    userId: currentUser.uid,
-                    orderId,
-                    ...formData
-                });
+                response = await apiService.post('/reviews/create', submitData);
             }
 
             if (response.success) {
@@ -178,7 +199,22 @@ export default function ReviewOrder() {
 
             <div className="container mx-auto px-4 py-8">
                 <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
-                    <h1 className="text-2xl font-bold text-gray-800 mb-6">Rate Your Experience</h1>
+                    <h1 className="text-2xl font-bold text-gray-800 mb-2">Rate Your Experience</h1>
+
+                    {productDetails && (
+                        <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-xl border">
+                            <img
+                                src={productDetails.image || (productDetails.images && productDetails.images[0])}
+                                alt={productDetails.productName}
+                                className="h-20 w-20 object-cover rounded-lg border shadow-sm"
+                            />
+                            <div>
+                                <h3 className="font-bold text-gray-900">{productDetails.productName}</h3>
+                                <p className="text-sm text-gray-500">{productDetails.category}</p>
+                                <p className="text-xs text-gray-400 mt-1">Order #{orderId?.slice(-6)}</p>
+                            </div>
+                        </div>
+                    )}
 
                     <form onSubmit={handleSubmit}>
                         {/* Star Ratings */}

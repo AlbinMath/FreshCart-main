@@ -70,3 +70,36 @@ exports.validateGstin = (req, res) => {
         res.json({ success: true, valid: false, message: "Invalid GSTIN format" });
     }
 };
+
+exports.recordFuelMetrics = async (req, res) => {
+    try {
+        const { orderId, originalDistanceKm, optimizedDistanceKm, fuelSavedLiters } = req.body;
+
+        if (orderId) {
+            const ledgerRecord = await OrderLedger.findOne({ orderId });
+            if (ledgerRecord) {
+                const lastBlock = ledgerRecord.chain[ledgerRecord.chain.length - 1];
+                const newBlock = await createNextBlock(
+                    lastBlock,
+                    "FUEL_SAVINGS_RECORDED",
+                    "SYSTEM",
+                    "TAX_SERVICE",
+                    {
+                        originalDistanceKm,
+                        optimizedDistanceKm,
+                        fuelSavedLiters,
+                        carbonReducedKg: fuelSavedLiters * 2.31 // approximate CO2 per liter
+                    }
+                );
+                ledgerRecord.chain.push(newBlock);
+                ledgerRecord.currentHash = newBlock.hash;
+                await ledgerRecord.save();
+                console.log(`[TaxService] Fuel metrics recorded for ${orderId}: Saved ${fuelSavedLiters}L`);
+            }
+        }
+        res.json({ success: true, message: "Fuel metrics processed" });
+    } catch (error) {
+        console.error("Error tracking fuel metrics:", error);
+        res.status(500).json({ success: false });
+    }
+};

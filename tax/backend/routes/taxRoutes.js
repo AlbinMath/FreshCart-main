@@ -11,4 +11,7 @@ router.get('/rules', taxController.getTaxRules);
 // Validate GSTIN (Mock)
 router.post('/validate-gstin', taxController.validateGstin);
 
+// Record Fuel & Carbon Savings from IDS Routing
+router.post('/fuel-metrics', taxController.recordFuelMetrics);
+
 module.exports = router;

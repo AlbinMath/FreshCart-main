@@ -8,6 +8,9 @@ import DeliveryCompletionDialog from '../components/DeliveryCompletionDialog';
 import LoadingScreen from '../components/LoadingScreen';
 
 const MyDelivery = () => {
+    const agentData = JSON.parse(localStorage.getItem('agent') || '{}');
+    const agentId = agentData.id;
+
     const [currentDeliveries, setCurrentDeliveries] = useState([]); // Changed to array
     const [selectedOrder, setSelectedOrder] = useState(null); // For Dialog
     const [todayStats, setTodayStats] = useState({ assigned: 0, completed: 0 });
@@ -21,6 +24,8 @@ const MyDelivery = () => {
     const [timer, setTimer] = useState(180); // 3 minutes in seconds
     const [isDialogOpen, setIsDialogOpen] = useState(false); // Dialog State
     const [pageLoading, setPageLoading] = useState(false); // Global page loading state
+    const [showCompletionDialog, setShowCompletionDialog] = useState(false);
+    const [selectedCompletionOrder, setSelectedCompletionOrder] = useState(null);
 
     // ... (existing code)
 
@@ -47,14 +52,13 @@ const MyDelivery = () => {
 
         loadData();
 
-        // Polling interval for real-time updates (1s)
         const intervalId = setInterval(() => {
             if (agentId) {
                 fetchCurrentDeliveries();
-                fetchNearestOrder();
+                fetchNearestOrder(true);
                 fetchTodayStats();
             }
-        }, 1000);
+        }, 5000); // Increased interval to 5 seconds to reduce API and geolocation strain
 
         return () => clearInterval(intervalId);
     }, [agentId]);
@@ -120,15 +124,17 @@ const MyDelivery = () => {
         }
     };
 
-    const fetchNearestOrder = () => {
+    const fetchNearestOrder = (isBackground = false) => {
         if (!agentId || currentDeliveries.length >= 5) return;
 
-        setLoadingNearest(true);
-        setLocationError(null);
+        if (!isBackground) {
+            setLoadingNearest(true);
+            setLocationError(null);
+        }
 
         if (!navigator.geolocation) {
-            setLocationError("Geolocation is not supported by your browser");
-            setLoadingNearest(false);
+            if (!isBackground) setLocationError("Geolocation is not supported by your browser");
+            if (!isBackground) setLoadingNearest(false);
             return;
         }
 
@@ -149,16 +155,20 @@ const MyDelivery = () => {
                         setNearestOrder(null);
                     }
                 } catch (err) {
-                    console.error("Error fetching nearest order:", err);
-                    setLocationError("Failed to fetch nearest order");
+                    if (!isBackground) {
+                        console.error("Error fetching nearest order:", err);
+                        setLocationError("Failed to fetch nearest order");
+                    }
                 } finally {
-                    setLoadingNearest(false);
+                    if (!isBackground) setLoadingNearest(false);
                 }
             },
             (error) => {
-                console.error("Error getting location:", error);
-                setLocationError("Unable to retrieve your location");
-                setLoadingNearest(false);
+                if (!isBackground) {
+                    console.error("Error getting location:", error);
+                    setLocationError("Unable to retrieve your location");
+                    setLoadingNearest(false);
+                }
             }
         );
     };

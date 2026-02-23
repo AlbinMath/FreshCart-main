@@ -53,8 +53,8 @@ const ProductReviewsDialog = ({ open, onOpenChange, product }) => {
                     <Star
                         key={star}
                         className={`h-4 w-4 ${star <= rating
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-300'
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-300'
                             }`}
                     />
                 ))}
@@ -68,10 +68,25 @@ const ProductReviewsDialog = ({ open, onOpenChange, product }) => {
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
                 <DialogHeader className="p-6 pb-4 border-b">
-                    <DialogTitle className="text-2xl">Customer Reviews</DialogTitle>
-                    <DialogDescription>
-                        Reviews for {product.productName}
-                    </DialogDescription>
+                    <div className="flex items-center gap-4">
+                        {product.image || (product.images && product.images.length > 0) ? (
+                            <img
+                                src={product.image || product.images[0]}
+                                alt={product.productName}
+                                className="h-16 w-16 object-cover rounded-lg border shadow-sm"
+                            />
+                        ) : (
+                            <div className="h-16 w-16 bg-gray-100 rounded-lg flex items-center justify-center border">
+                                <Package className="h-8 w-8 text-gray-400" />
+                            </div>
+                        )}
+                        <div>
+                            <DialogTitle className="text-2xl">Customer Reviews</DialogTitle>
+                            <DialogDescription>
+                                Reviews for {product.productName}
+                            </DialogDescription>
+                        </div>
+                    </div>
                 </DialogHeader>
 
                 <ScrollArea className="flex-1 px-6">

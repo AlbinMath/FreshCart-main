@@ -1,9 +1,19 @@
-import React from 'react';
-import { User, Phone, Mail, MapPin, Calendar, CreditCard, Truck, Hash } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { User, Phone, Mail, MapPin, Calendar, CreditCard, Truck, Hash, Star } from 'lucide-react';
 
 const Profile = () => {
     // Retrieve agent name from local storage
     const agentData = JSON.parse(localStorage.getItem('agent') || '{}');
+    const [stats, setStats] = useState({ averageRating: "0.0" });
+
+    useEffect(() => {
+        if (agentData.id) {
+            axios.get(`${import.meta.env.VITE_API_URL}/stats/${agentData.id}`)
+                .then(res => setStats(res.data))
+                .catch(err => console.error(err));
+        }
+    }, [agentData.id]);
 
     // Helper to render a detail row
     const DetailRow = ({ icon: Icon, label, value }) => (
@@ -39,6 +49,17 @@ const Profile = () => {
                             ${agentData.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                             {agentData.status || 'Active'}
                         </span>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 className="font-bold text-gray-800 mb-4 border-b pb-2">Performance Overview</h4>
+                        <div className="p-4 bg-purple-50 rounded-xl text-center border border-purple-100">
+                            <div className="flex items-center justify-center gap-1 mb-1">
+                                <Star size={20} className="fill-purple-400 text-purple-400" />
+                                <span className="text-3xl font-bold text-purple-900">{stats.averageRating || "0.0"}</span>
+                            </div>
+                            <p className="text-xs text-purple-600 font-medium">Customer Satisfaction Rating</p>
+                        </div>
                     </div>
 
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">

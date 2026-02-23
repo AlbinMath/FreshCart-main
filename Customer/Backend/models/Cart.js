@@ -9,9 +9,11 @@ const cartSchema = new mongoose.Schema({
         price: { type: Number, required: true },
         quantity: { type: Number, required: true, min: 1 },
         image: { type: String },
-        stock: { type: Number }, // To check availability
+        stock: { type: Number },
         unit: { type: String },
-        sellerId: { type: mongoose.Schema.Types.ObjectId }
+        sellerId: { type: mongoose.Schema.Types.ObjectId },
+        storeAddress: { type: String },
+        preparationTime: { type: String }
     }]
 }, {
     timestamps: true

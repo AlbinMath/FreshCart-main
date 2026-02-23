@@ -9,6 +9,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Customer = require('../models/Customer');
 const Product = require('../models/Product');
+const Review = require('../models/Review');
 
 const router = express.Router();
 
@@ -569,6 +570,7 @@ router.get('/stats/:agentId', async (req, res) => {
         const startOfDay = new Date();
         startOfDay.setHours(0, 0, 0, 0);
 
+        // 1. Order Stats
         const assignedCount = await Order.countDocuments({
             deliveryAgentId: agentId,
             assignedAt: { $gte: startOfDay }
@@ -576,15 +578,52 @@ router.get('/stats/:agentId', async (req, res) => {
 
         const completedCount = await Order.countDocuments({
             deliveryAgentId: agentId,
-            status: 'Delivered', // Assuming 'Delivered' is the completion status
+            status: 'Delivered',
             updatedAt: { $gte: startOfDay }
         });
 
+        // 2. Rating Stats (Across all time for the agent)
+        // Find all orders assigned to this agent
+        const agentOrders = await Order.find({ deliveryAgentId: agentId }, '_id');
+        const orderIds = agentOrders.map(o => o._id.toString());
+
+        // Find reviews for these orders
+        const reviews = await Review.find({ orderId: { $in: orderIds } });
+
+        const avgRating = reviews.length > 0
+            ? (reviews.reduce((sum, r) => sum + (r.deliveryRate || 0), 0) / reviews.length).toFixed(1)
+            : "0.0";
+
         res.json({
             assigned: assignedCount,
-            completed: completedCount
+            completed: completedCount,
+            averageRating: avgRating,
+            totalReviews: reviews.length
         });
     } catch (err) {
+        console.error("Error fetching agent stats:", err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get Delivery Reviews for an Agent
+router.get('/reviews/:agentId', async (req, res) => {
+    try {
+        const { agentId } = req.params;
+        const agentOrders = await Order.find({ deliveryAgentId: agentId }, '_id');
+        const orderIds = agentOrders.map(o => o._id.toString());
+
+        const reviews = await Review.find({
+            orderId: { $in: orderIds },
+            $or: [
+                { deliveryReview: { $exists: true, $ne: "" } },
+                { deliveryRate: { $exists: true } }
+            ]
+        }).sort({ createdAt: -1 });
+
+        res.json(reviews);
+    } catch (err) {
+        console.error("Error fetching agent reviews:", err);
         res.status(500).json({ message: err.message });
     }
 });

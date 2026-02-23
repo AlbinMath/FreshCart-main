@@ -11,7 +11,9 @@ const orderSchema = new mongoose.Schema({
         unit: String,
         price: Number,
         image: String,
-        sellerId: String
+        sellerId: String,
+        storeAddress: String,
+        preparationTime: String
     }],
     totalAmount: { type: Number, required: true },
     shippingAddress: {

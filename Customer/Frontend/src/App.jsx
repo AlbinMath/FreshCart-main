@@ -62,6 +62,7 @@ function AppContent() {
                 <Route path="/order-success/:orderId" element={<OrderSuccess />} />
                 <Route path="/orders" element={<Orders />} />
                 <Route path="/rate-order/:orderId" element={<ReviewOrder />} />
+                <Route path="/rate-product/:orderId/:productId" element={<ReviewOrder />} />
                 <Route path="/report-issue" element={<ReportIssue />} />
             </Route>
         </Routes>

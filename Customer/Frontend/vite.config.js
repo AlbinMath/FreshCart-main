@@ -7,4 +7,8 @@ export default defineConfig({
     server: {
         port: 5174,
     },
+    // Normalize path casing warnings on Windows (Frontend vs frontend)
+    resolve: {
+        preserveSymlinks: false,
+    },
 })

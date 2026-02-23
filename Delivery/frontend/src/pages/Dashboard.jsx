@@ -120,10 +120,28 @@ const Dashboard = () => {
         }
     };
 
+    const [realStats, setRealStats] = useState({ assigned: 0, completed: 0, averageRating: "0.0" });
+    const [loadingStats, setLoadingStats] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            if (!agentId) return;
+            try {
+                const response = await axios.get(`${import.meta.env.VITE_API_URL}/stats/${agentId}`);
+                setRealStats(response.data);
+            } catch (err) {
+                console.error("Error fetching real stats:", err);
+            } finally {
+                setLoadingStats(false);
+            }
+        };
+        fetchStats();
+    }, [agentId]);
+
     const stats = [
-        { label: "Today's Deliveries", value: "0", target: "Target: 12", percent: 0, color: "blue", icon: Package },
-        { label: "Earnings Today", value: "₹0", change: "+₹0", color: "green", icon: DollarSign },
-        { label: "Average Rating", value: "0.0", change: "+0.0", color: "purple", icon: Star },
+        { label: "Today's Deliveries", value: realStats.completed.toString(), target: "Target: 12", percent: Math.min(Math.round((realStats.completed / 12) * 100), 100), color: "blue", icon: Package },
+        { label: "Earnings Today", value: `₹${realStats.completed * 40}`, change: `+₹${realStats.completed * 40}`, color: "green", icon: DollarSign },
+        { label: "Average Rating", value: realStats.averageRating || "0.0", change: "+0.0", color: "purple", icon: Star },
         { label: "Time Online", value: "0h", target: "Target: 8h", percent: 0, color: "orange", icon: Clock },
     ];
 
@@ -292,30 +310,30 @@ const Dashboard = () => {
                             <div>
                                 <div className="flex justify-between text-sm mb-2">
                                     <span className="text-gray-600">Deliveries Completed</span>
-                                    <span className="font-bold text-gray-800">0/12</span>
+                                    <span className="font-bold text-gray-800">{realStats.completed}/12</span>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-2">
-                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: `${Math.min(Math.round((realStats.completed / 12) * 100), 100)}%` }}></div>
                                 </div>
                             </div>
 
                             <div>
                                 <div className="flex justify-between text-sm mb-2">
                                     <span className="text-gray-600">On-Time Delivery Rate</span>
-                                    <span className="font-bold text-gray-800">0%</span>
+                                    <span className="font-bold text-gray-800">100%</span>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-2">
-                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '100%' }}></div>
                                 </div>
                             </div>
 
                             <div>
                                 <div className="flex justify-between text-sm mb-2">
                                     <span className="text-gray-600">Customer Rating</span>
-                                    <span className="font-bold text-gray-800">0.0/5.0</span>
+                                    <span className="font-bold text-gray-800">{realStats.averageRating || "0.0"}/5.0</span>
                                 </div>
                                 <div className="w-full bg-gray-100 rounded-full h-2">
-                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+                                    <div className="bg-green-500 h-2 rounded-full" style={{ width: `${(parseFloat(realStats.averageRating) || 0) * 20}%` }}></div>
                                 </div>
                             </div>
                         </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import apiService from '../services/apiService';
 import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
+import DeliveryEstimate from '../components/DeliveryEstimate';
 
 export default function Orders() {
     const { currentUser } = useAuth();
@@ -119,16 +120,47 @@ export default function Orders() {
                                             </span>
                                         </div>
                                     </div>
+
+                                    {/* ✅ Delivery Estimate – only for active orders */}
+                                    {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                                        <div className="mt-4 border-t pt-4">
+                                            <DeliveryEstimate
+                                                storeAddress={(order.items?.[0] || {}).storeAddress || null}
+                                                prepMins={parseFloat((order.items?.[0] || {}).preparationTime) || 0}
+                                                savedAddress={order.shippingAddress}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {/* Products in Order */}
+                                    <div className="mt-4 border-t pt-4">
+                                        <p className="text-sm font-semibold text-gray-700 mb-2">Items:</p>
+                                        <div className="flex flex-wrap gap-4">
+                                            {order.items.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 bg-gray-50 p-2 rounded-lg border">
+                                                    <img
+                                                        src={item.image || (item.images && item.images[0])}
+                                                        alt={item.productName}
+                                                        className="h-12 w-12 object-cover rounded"
+                                                    />
+                                                    <div className="flex flex-col">
+                                                        <span className="text-xs font-medium text-gray-800 line-clamp-1 w-32">{item.productName}</span>
+                                                        <span className="text-[10px] text-gray-500">{item.quantity} x ₹{item.sellingPrice}</span>
+                                                        {order.status === 'Delivered' && (
+                                                            <Link
+                                                                to={`/rate-product/${order._id}/${item.productId || item._id}`}
+                                                                className="text-xs text-yellow-600 hover:underline font-bold mt-1"
+                                                            >
+                                                                Rate Product ★
+                                                            </Link>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     <div className="mt-4 flex justify-end gap-3">
-                                        {order.status === 'Delivered' && (
-                                            <Link
-                                                to={`/rate-order/${order._id}`}
-                                                className="text-yellow-600 hover:text-yellow-700 text-sm font-medium flex items-center gap-1 border border-yellow-600 px-3 py-1 rounded transition hover:bg-yellow-50"
-                                            >
-                                                Rate Order
-                                                <span className="text-lg">★</span>
-                                            </Link>
-                                        )}
                                         <Link
                                             to={`/order-success/${order._id}`}
                                             className="text-green-600 hover:text-green-700 text-sm font-medium flex items-center gap-1 border border-green-600 px-3 py-1 rounded transition hover:bg-green-50"

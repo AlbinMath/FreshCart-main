@@ -42,10 +42,12 @@ router.get('/:userId', async (req, res) => {
             return res.json({ success: true, cart: { items: [] } });
         }
 
-        // Fetch valid products manualy to get sellerUniqueId
+        // Fetch product details to enrich cart items (sellerUniqueId, delivery fields, etc.)
         if (cart.items && cart.items.length > 0) {
             const productIds = cart.items.map(item => item.productId);
-            const products = await Product.find({ _id: { $in: productIds } }).select('sellerUniqueId product_id _id unit').lean();
+            const products = await Product.find({ _id: { $in: productIds } })
+                .select('sellerUniqueId product_id _id unit storeAddress preparationTime')
+                .lean();
 
             // Create a map for quick lookup
             const productMap = {};
@@ -53,14 +55,16 @@ router.get('/:userId', async (req, res) => {
                 productMap[p._id.toString()] = p;
             });
 
-            // Merge details into cart items
+            // Merge details into cart items (always overwrite delivery fields from live product data)
             cart.items = cart.items.map(item => {
-                const productDefaults = productMap[item.productId.toString()];
+                const prod = productMap[item.productId.toString()];
                 return {
                     ...item,
-                    sellerUniqueId: productDefaults ? productDefaults.sellerUniqueId : 'Unknown',
-                    product_id: productDefaults ? productDefaults.product_id : 'Unknown',
-                    unit: item.unit || (productDefaults ? productDefaults.unit : '')
+                    sellerUniqueId: prod ? prod.sellerUniqueId : 'Unknown',
+                    product_id: prod ? prod.product_id : 'Unknown',
+                    unit: item.unit || (prod ? prod.unit : ''),
+                    storeAddress: prod ? (prod.storeAddress || '') : (item.storeAddress || ''),
+                    preparationTime: prod ? (prod.preparationTime || '') : (item.preparationTime || '')
                 };
             });
         }

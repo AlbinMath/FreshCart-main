@@ -7,6 +7,7 @@ const Product = require('../models/Product');
 const Cart = require('../models/Cart');
 const OrderLedger = require('../models/OrderLedger');
 const { createGenesisBlock, createNextBlock } = require('../utils/ledgerUtils');
+const axios = require('axios');
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -95,14 +96,27 @@ router.post('/verify-payment', async (req, res) => {
             // Recalculate Total (Optional but good check)
             const secureTotalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+            // Enrich cart items with storeAddress + preparationTime from Product collection
+            const enrichedItems = await Promise.all(cart.items.map(async (item) => {
+                const plainItem = item.toObject ? item.toObject() : { ...item };
+                try {
+                    const prod = await Product.findById(item.productId).select('storeAddress preparationTime').lean();
+                    if (prod) {
+                        plainItem.storeAddress = prod.storeAddress || '';
+                        plainItem.preparationTime = prod.preparationTime || '';
+                    }
+                } catch { /* skip enrichment on error */ }
+                return plainItem;
+            }));
+
             // Create Order in DB
             const newOrder = new Order({
                 userId,
-                orderId: generateOrderId(), // Generate ID
-                items: cart.items, // Use Cart Items!
-                totalAmount: secureTotalAmount, // Use Calculated Total!
+                orderId: generateOrderId(),
+                items: enrichedItems,
+                totalAmount: secureTotalAmount,
                 shippingAddress,
-                taxDetails: req.body.taxDetails, // Save tax details (This might need validation too but usually less critical than price)
+                taxDetails: req.body.taxDetails,
                 paymentStatus: 'Paid',
                 razorpayOrderId: razorpay_order_id,
                 razorpayPaymentId: razorpay_payment_id,
@@ -110,6 +124,25 @@ router.post('/verify-payment', async (req, res) => {
             });
 
             await newOrder.save();
+
+            // Push order to IDS for clustering
+            try {
+                if (shippingAddress && shippingAddress.latitude && shippingAddress.longitude) {
+                    await axios.post(`${process.env.IDS_CORE_API_URL}/api/orders`, {
+                        order_id: newOrder.orderId,
+                        customer_name: shippingAddress.name || 'Customer',
+                        location: {
+                            type: 'Point',
+                            coordinates: [shippingAddress.longitude, shippingAddress.latitude]
+                        },
+                        priority: 1, // Standard for online
+                        volume: items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+                    });
+                    console.log(`[IDS] Order ${newOrder.orderId} forwarded successfully`);
+                }
+            } catch (idsErr) {
+                console.error(`[IDS] Error forwarding order:`, idsErr.message);
+            }
 
             // ORDER_INTEGRITY: Create Genesis Block + Payment Verified Block
             try {
@@ -208,19 +241,51 @@ router.post('/place-cod-order', async (req, res) => {
             taxDetails
         } = req.body;
 
+        // Enrich items with storeAddress + preparationTime from Product collection
+        const enrichedItems = await Promise.all(items.map(async (item) => {
+            const enriched = { ...item };
+            try {
+                const prod = await Product.findById(item.productId).select('storeAddress preparationTime').lean();
+                if (prod) {
+                    enriched.storeAddress = prod.storeAddress || '';
+                    enriched.preparationTime = prod.preparationTime || '';
+                }
+            } catch { /* skip enrichment on error */ }
+            return enriched;
+        }));
+
         const newOrder = new Order({
             userId,
-            orderId: generateOrderId(), // Generate ID
-            items,
+            orderId: generateOrderId(),
+            items: enrichedItems,
             totalAmount,
             shippingAddress,
-            taxDetails, // Save tax details
+            taxDetails,
             paymentStatus: 'Pending',
             paymentMethod: 'COD',
             status: 'Placed'
         });
 
         await newOrder.save();
+
+        // Push order to IDS for clustering
+        try {
+            if (shippingAddress && shippingAddress.latitude && shippingAddress.longitude) {
+                await axios.post(`${process.env.IDS_CORE_API_URL}/api/orders`, {
+                    order_id: newOrder.orderId,
+                    customer_name: shippingAddress.name || 'Customer',
+                    location: {
+                        type: 'Point',
+                        coordinates: [shippingAddress.longitude, shippingAddress.latitude]
+                    },
+                    priority: 2, // COD or higher priority manually
+                    volume: items.reduce((sum, item) => sum + (item.quantity || 1), 0)
+                });
+                console.log(`[IDS] COD Order ${newOrder.orderId} forwarded successfully`);
+            }
+        } catch (idsErr) {
+            console.error(`[IDS] Error forwarding order:`, idsErr.message);
+        }
 
         // ORDER_INTEGRITY: Create Genesis Block
         try {

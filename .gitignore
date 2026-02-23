@@ -109,3 +109,5 @@ coverage/
 .parcel-cache/
 .eslintcache
 .stylelintcache
+delivery_optimization_analysis.md
+delivery_optimization_report.md

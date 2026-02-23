@@ -126,7 +126,9 @@ function Home() {
                 image: product.images && product.images.length > 0 ? product.images[0] : null,
                 stock: product.stockQuantity,
                 unit: product.unit,
-                sellerId: product.sellerId
+                sellerId: product.sellerId,
+                storeAddress: product.storeAddress || '',
+                preparationTime: product.preparationTime || ''
             };
 
             await cartService.addToCart(currentUser.uid, cartItem);

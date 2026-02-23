@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import DeliveryEstimate from './DeliveryEstimate';
 
 export default function ProductDetailsDialog({ product, onClose }) {
     if (!product) return null;
@@ -16,17 +17,17 @@ export default function ProductDetailsDialog({ product, onClose }) {
         e.stopPropagation();
         if (!product.images || product.images.length <= 1) return;
         const currentIndex = product.images.indexOf(activeImage);
-        const nextIndex = (currentIndex + 1) % product.images.length;
-        setActiveImage(product.images[nextIndex]);
+        setActiveImage(product.images[(currentIndex + 1) % product.images.length]);
     };
 
     const handlePrevImage = (e) => {
         e.stopPropagation();
         if (!product.images || product.images.length <= 1) return;
         const currentIndex = product.images.indexOf(activeImage);
-        const prevIndex = (currentIndex - 1 + product.images.length) % product.images.length;
-        setActiveImage(product.images[prevIndex]);
+        setActiveImage(product.images[(currentIndex - 1 + product.images.length) % product.images.length]);
     };
+
+    const prepMins = parseFloat(product.preparationTime) || 0;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose}>
@@ -48,30 +49,18 @@ export default function ProductDetailsDialog({ product, onClose }) {
                 <div className="md:w-1/2 p-6 bg-gray-50 flex flex-col items-center justify-center">
                     <div className="w-full h-64 md:h-80 mb-4 bg-white rounded-lg shadow-sm flex items-center justify-center overflow-hidden relative group">
                         {activeImage ? (
-                            <img
-                                src={activeImage}
-                                alt={product.productName}
-                                className="w-full h-full object-contain"
-                            />
+                            <img src={activeImage} alt={product.productName} className="w-full h-full object-contain" />
                         ) : (
                             <div className="text-gray-300 text-6xl">📦</div>
                         )}
-
-                        {/* Navigation Arrows */}
                         {product.images && product.images.length > 1 && (
                             <>
-                                <button
-                                    onClick={handlePrevImage}
-                                    className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
+                                <button onClick={handlePrevImage} className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                     </svg>
                                 </button>
-                                <button
-                                    onClick={handleNextImage}
-                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
-                                >
+                                <button onClick={handleNextImage} className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
@@ -79,15 +68,11 @@ export default function ProductDetailsDialog({ product, onClose }) {
                             </>
                         )}
                     </div>
-                    {/* Thumbnails */}
                     {product.images && product.images.length > 1 && (
                         <div className="flex gap-2 overflow-x-auto w-full p-2">
                             {product.images.map((img, idx) => (
-                                <button
-                                    key={idx}
-                                    onClick={() => setActiveImage(img)}
-                                    className={`w-16 h-16 flex-shrink-0 rounded-md border-2 overflow-hidden ${activeImage === img ? 'border-blue-500' : 'border-transparent'}`}
-                                >
+                                <button key={idx} onClick={() => setActiveImage(img)}
+                                    className={`w-16 h-16 flex-shrink-0 rounded-md border-2 overflow-hidden ${activeImage === img ? 'border-blue-500' : 'border-transparent'}`}>
                                     <img src={img} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
                                 </button>
                             ))}
@@ -96,39 +81,38 @@ export default function ProductDetailsDialog({ product, onClose }) {
                 </div>
 
                 {/* Right: Details */}
-                <div className="md:w-1/2 p-6 md:p-8 space-y-6">
-                    <div>
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <h2 className="text-3xl font-bold text-gray-800 mb-2">{product.productName}</h2>
-                                <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                                    {product.category}
-                                </span>
-                                <div className="mt-2 space-y-1 text-xs text-gray-500">
-                                    <p>Product ID: <span className="font-mono bg-gray-100 px-1 rounded">{product.product_id || product._id}</span></p>
-                                    <p>Seller ID: <span className="font-mono bg-gray-100 px-1 rounded">{product.sellerUniqueId || 'Unknown'}</span></p>
-                                </div>
+                <div className="md:w-1/2 p-6 md:p-8 space-y-5 overflow-y-auto">
+                    {/* Header */}
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-3xl font-bold text-gray-800 mb-2">{product.productName}</h2>
+                            <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{product.category}</span>
+                            <div className="mt-2 space-y-1 text-xs text-gray-500">
+                                <p>Product ID: <span className="font-mono bg-gray-100 px-1 rounded">{product.product_id || product._id}</span></p>
+                                <p>Seller ID: <span className="font-mono bg-gray-100 px-1 rounded">{product.sellerUniqueId || 'Unknown'}</span></p>
                             </div>
-                            <div className="text-right">
-                                <p className="text-3xl font-bold text-green-600">{formatPrice(product.sellingPrice)}</p>
-                                {product.originalPrice && product.originalPrice > product.sellingPrice && (
-                                    <p className="text-sm text-gray-400 line-through">{formatPrice(product.originalPrice)}</p>
-                                )}
-                                <p className="text-xs text-gray-500 mt-1">per {product.unit}</p>
-                            </div>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-3xl font-bold text-green-600">{formatPrice(product.sellingPrice)}</p>
+                            {product.originalPrice && product.originalPrice > product.sellingPrice && (
+                                <p className="text-sm text-gray-400 line-through">{formatPrice(product.originalPrice)}</p>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">per {product.unit}</p>
                         </div>
                     </div>
 
+                    {/* Description */}
                     <div className="prose prose-sm text-gray-600">
                         <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">Description</h3>
-                        <p>{product.description || "No description available."}</p>
+                        <p>{product.description || 'No description available.'}</p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                    {/* Specs Grid */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="bg-gray-50 p-3 rounded-lg">
                             <span className="block text-gray-400 text-xs uppercase">Stock Status</span>
                             <span className={`font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                                {product.stockQuantity > 0 ? `${product.stockQuantity} ${product.unit || ''} ` : 'Out of Stock'}
+                                {product.stockQuantity > 0 ? `${product.stockQuantity} ${product.unit || ''}` : 'Out of Stock'}
                             </span>
                         </div>
                         {product.freshnessGuarantee && (
@@ -151,7 +135,13 @@ export default function ProductDetailsDialog({ product, onClose }) {
                         )}
                     </div>
 
-                    {/* Specific Attributes */}
+                    {/* ✅ Estimated Delivery Time (with explanation toggle) */}
+                    <DeliveryEstimate
+                        storeAddress={product.storeAddress}
+                        prepMins={prepMins}
+                    />
+
+                    {/* Attributes */}
                     <div className="border-t pt-4 space-y-2">
                         {product.storageInstructions && (
                             <div className="flex justify-between text-sm">
@@ -173,16 +163,14 @@ export default function ProductDetailsDialog({ product, onClose }) {
                         )}
                     </div>
 
-                    {/* Seller Info */}
+                    {/* Seller */}
                     <div className="border-t pt-4 flex items-center justify-between">
                         <div className="text-xs text-gray-500">
-                            Sold by <br />
+                            Sold by<br />
                             <span className="font-bold text-gray-700 text-sm">{product.storeName || product.sellerName}</span>
                         </div>
                         {product.storeAddress && (
-                            <div className="text-xs text-gray-400 text-right">
-                                {product.storeAddress}
-                            </div>
+                            <div className="text-xs text-gray-400 text-right">{product.storeAddress}</div>
                         )}
                     </div>
                 </div>

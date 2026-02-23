@@ -2,6 +2,7 @@ const router = require('express').Router();
 const Order = require('../models/Order');
 const OrderLedger = require('../models/OrderLedger');
 const { createNextBlock } = require('../utils/ledgerUtils');
+const axios = require('axios');
 
 // Get Orders for a specific Seller
 router.get('/seller/:sellerId', async (req, res) => {
@@ -93,9 +94,29 @@ router.put('/:id/status', async (req, res) => {
         const updatedOrder = await Order.findByIdAndUpdate(
             id,
             { status },
-            { status },
             { new: true }
         );
+
+        // Push status to IDS if ready for delivery
+        try {
+            if (updatedOrder && (status === 'Processing' || status === 'Ready for Shipping' || status === 'Dispatched')) {
+                if (updatedOrder.shippingAddress && updatedOrder.shippingAddress.latitude) {
+                    await axios.post(`${process.env.IDS_CORE_API_URL || 'http://localhost:2012'}/api/orders`, {
+                        order_id: updatedOrder.orderId,
+                        customer_name: updatedOrder.shippingAddress.name || 'Customer',
+                        location: {
+                            type: 'Point',
+                            coordinates: [updatedOrder.shippingAddress.longitude, updatedOrder.shippingAddress.latitude]
+                        },
+                        priority: status === 'Ready for Shipping' ? 2 : 1,
+                        volume: updatedOrder.items ? updatedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0) : 1
+                    });
+                    console.log(`[IDS] Order ${updatedOrder.orderId} updated in Dispatch System`);
+                }
+            }
+        } catch (idsErr) {
+            console.error(`[IDS] Failed to notify dispatch:`, idsErr.message);
+        }
 
         // ORDER_INTEGRITY: Append Status Update Block
         try {

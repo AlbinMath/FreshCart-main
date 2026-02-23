@@ -4,6 +4,7 @@ dotenv.config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const axios = require('axios');
 const deliveryAgentRoutes = require('./routes/deliveryAgentRoutes');
 
 const http = require('http');
@@ -42,6 +43,19 @@ io.on('connection', (socket) => {
         // Broadcast location to specific rooms or all clients (e.g., admin dashboard)
         // For now, we broadcast to everyone for simplicity
         io.emit('agentLocationUpdate', data);
+
+        // Push location to IDS cluster engine
+        try {
+            if (data.agentId && data.location && data.location.lat && data.location.lng) {
+                await axios.post(`${process.env.IDS_CORE_API_URL || 'http://localhost:2012'}/api/agents/update-location`, {
+                    agent_id: data.agentId,
+                    coordinates: [data.location.lng, data.location.lat],
+                    status: 'available'
+                });
+            }
+        } catch (idsErr) {
+            console.error(`[IDS] Failed to push Agent location:`, idsErr.message);
+        }
 
         try {
             // Update the agent's current location in DeliveryAgent collection

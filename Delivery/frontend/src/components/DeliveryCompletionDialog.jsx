@@ -49,8 +49,9 @@ const DeliveryCompletionDialog = ({ isOpen, onClose, order, onCompleteSuccess })
         setLoading(true);
         setError(null);
         try {
-            // 1. Generate OTP via Python Service
-            const otpResponse = await axios.get('http://localhost:8000/api/otp');
+            // 1. Generate OTP via External Service
+            const otpUrl = import.meta.env.VITE_OTP_API_URL || 'https://otp-znan.vercel.app';
+            const otpResponse = await axios.get(otpUrl);
             const newOtp = otpResponse.data.otp;
             setGeneratedOtp(newOtp);
 
