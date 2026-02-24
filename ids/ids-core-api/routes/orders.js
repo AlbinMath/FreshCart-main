@@ -40,4 +40,32 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Update order status
+router.put('/:order_id/status', async (req, res) => {
+    try {
+        const { order_id } = req.params;
+        const { status } = req.body;
+
+        const order = await Order.findOneAndUpdate(
+            { order_id },
+            { status },
+            { new: true }
+        );
+
+        if (!order) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        // Broadcast status update
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('order_status_update', { order_id, status });
+        }
+
+        res.json(order);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

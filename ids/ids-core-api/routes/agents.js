@@ -72,4 +72,29 @@ router.get('/nearby', async (req, res) => {
     }
 });
 
+// Get assigned clusters for an agent
+router.get('/:agent_id/assigned-cluster', async (req, res) => {
+    try {
+        const { agent_id } = req.params;
+        const agent = await Agent.findOne({ agent_id });
+
+        if (!agent) {
+            return res.status(404).json({ error: 'Agent not found in IDS' });
+        }
+
+        const Cluster = require('../models/Cluster');
+        const Order = require('../models/Order');
+
+        const assignedClusters = await Cluster.find({
+            assigned_agent_id: agent._id,
+            status: 'assigned'
+        }).populate('route_sequence');
+
+        res.json(assignedClusters);
+
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

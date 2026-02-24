@@ -32,7 +32,7 @@ const deg2rad = (deg) => {
 
 // --- Nearest Order Logic ---
 
-// Get Nearest Shop Order
+// Get Nearest Shop Order (Overhauled to use Intelligent Dispatch System Clusters)
 router.post('/nearest-shop-order', async (req, res) => {
     try {
         const { latitude, longitude, agentId } = req.body;
@@ -41,63 +41,68 @@ router.post('/nearest-shop-order', async (req, res) => {
             return res.status(400).json({ message: 'Location and Agent ID are required' });
         }
 
-        // 1. Get filtered active orders
-        // Status must be 'Shipped'
-        // Not already assigned (deliveryAgentId is null or missing)
-        // Agent ID not in rejectedAgentIds
-        const activeOrders = await Order.find({
-            status: 'Shipped',
-            deliveryAgentId: { $exists: false }, // Check if not assigned
-            rejectedAgentIds: { $ne: agentId }   // Check if not rejected by this agent
-        });
-
-        if (!activeOrders || activeOrders.length === 0) {
-            return res.json({ message: 'No active orders found' });
+        // 1. Fetch the Agent's Assigned Clusters from the IDS API
+        const IDS_CORE_API_URL = process.env.IDS_CORE_API_URL || 'http://localhost:2012';
+        let idsClusters = [];
+        try {
+            const clusterRes = await axios.get(`${IDS_CORE_API_URL}/api/agents/${agentId}/assigned-cluster`);
+            idsClusters = clusterRes.data || [];
+        } catch (idsErr) {
+            console.error('[IDS Sync] Failed to fetch agent clusters:', idsErr.message);
         }
 
-        // 2. Filter/Find nearest
-        // Note: Ideally, Order should have seller/shop location inside or reference to Seller.
-        // We will iterate and find the min distance.
-        // Requires fetching Seller details for location if not in Order.
+        if (!idsClusters || idsClusters.length === 0) {
+            return res.json({ message: 'No active orders found in your ML cluster queue' });
+        }
 
-        // Optimizing: Fetch all relevant sellers first or populate?
-        // Since schema is loose (strict:false), we check if location is in Order or need to lookup Seller.
-        // Assuming Order has 'sellerId'.
+        // 2. Extract the sequenced order IDs from the first active cluster
+        const targetCluster = idsClusters[0];
+        if (!targetCluster.route_sequence || targetCluster.route_sequence.length === 0) {
+            return res.json({ message: 'No active orders found in your ML cluster queue' });
+        }
 
-        let nearestOrder = null;
-        let minDistance = Infinity;
+        const sequencedOrderStringIds = targetCluster.route_sequence.map(o => o.order_id);
 
-        // Fetch all sellers just in case (optimization: fetch only relevant ones if list is huge)
-        const sellerIds = [...new Set(activeOrders.map(o => o.sellerId || (o.items && o.items.length > 0 && o.items[0].sellerId)))].filter(id => id);
-        const sellers = await Seller.find({ _id: { $in: sellerIds } });
-        const sellerMap = {};
-        sellers.forEach(s => sellerMap[s._id.toString()] = s);
+        // 3. Find the first unassigned order in the database that matches the ML sequence
+        let nextOrderToAssign = null;
+        let sellerInfo = null;
 
-        for (const order of activeOrders) {
-            const sellerId = order.sellerId || (order.items && order.items.length > 0 && order.items[0].sellerId);
-            const seller = sellerMap[sellerId];
-            if (seller && seller.latitude && seller.longitude) {
-                const dist = calculateDistance(latitude, longitude, seller.latitude, seller.longitude);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    nearestOrder = {
-                        ...order.toObject(),
-                        shopName: seller.storeName || seller.sellerName,
-                        shopAddress: seller.storeAddress,
+        for (let targetOrderId of sequencedOrderStringIds) {
+            const potentialOrder = await Order.findOne({
+                orderId: targetOrderId,
+                status: 'Shipped', // Only orders ready for pickup
+                deliveryAgentId: { $exists: false },
+                rejectedAgentIds: { $ne: agentId }
+            });
+
+            if (potentialOrder) {
+                // Fetch the seller for store info
+                const sellerId = potentialOrder.sellerId || (potentialOrder.items && potentialOrder.items.length > 0 && potentialOrder.items[0].sellerId);
+                sellerInfo = await Seller.findById(sellerId);
+
+                if (sellerInfo) {
+                    // Compute distance (for display purposes in the app)
+                    const dist = calculateDistance(latitude, longitude, sellerInfo.latitude || 0, sellerInfo.longitude || 0);
+                    nextOrderToAssign = {
+                        ...potentialOrder.toObject(),
+                        shopName: sellerInfo.storeName || sellerInfo.sellerName,
+                        shopAddress: sellerInfo.storeAddress,
                         distance: dist.toFixed(2) // km
                     };
+                    break; // Stop at the very first valid order in the route sequence
                 }
             }
         }
 
-        if (nearestOrder) {
-            res.json(nearestOrder);
+        if (nextOrderToAssign) {
+            res.json(nextOrderToAssign);
         } else {
-            res.json(null);
+            // If the entire cluster is assigned/picked up, the ML queue is empty for them
+            res.json({ message: 'No active orders found in your ML cluster queue' });
         }
 
     } catch (err) {
-        console.error("Error finding nearest order:", err);
+        console.error("Error finding nearest IDS cluster order:", err);
         res.status(500).json({ message: err.message });
     }
 });
@@ -130,6 +135,14 @@ router.put('/accept-order', async (req, res) => {
 
         if (!order) {
             return res.status(400).json({ message: 'Order already assigned or not found' });
+        }
+
+        // Push status to IDS
+        try {
+            const IDS_CORE_API_URL = process.env.IDS_CORE_API_URL || 'http://localhost:2012';
+            await axios.put(`${IDS_CORE_API_URL}/api/orders/${order.orderId || order._id.toString()}/status`, { status: 'in_transit' });
+        } catch (idsErr) {
+            console.error('[IDS Sync] Failed to update order status:', idsErr.message);
         }
 
         res.json({ message: 'Order accepted', order });
@@ -375,6 +388,14 @@ router.post('/verify-otp', async (req, res) => {
         order.updatedAt = new Date();
 
         await order.save();
+
+        // Push status to IDS
+        try {
+            const IDS_CORE_API_URL = process.env.IDS_CORE_API_URL || 'http://localhost:2012';
+            await axios.put(`${IDS_CORE_API_URL}/api/orders/${order.orderId || order._id.toString()}/status`, { status: 'delivered' });
+        } catch (idsErr) {
+            console.error('[IDS Sync] Failed to update order status to delivered:', idsErr.message);
+        }
 
         res.json({ message: 'Order completed successfully', order });
 

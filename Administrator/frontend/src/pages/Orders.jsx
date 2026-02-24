@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Download, Eye, ListOrdered } from 'lucide-react';
+import { Search, Filter, Download, Eye, ListOrdered, Zap } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import {
@@ -17,6 +17,7 @@ const Orders = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [isDispatching, setIsDispatching] = useState(false);
 
     // Dialog State
     const [selectedOrder, setSelectedOrder] = useState(null);
@@ -39,6 +40,23 @@ const Orders = () => {
         }
     };
 
+    const handleTriggerDispatch = async () => {
+        try {
+            setIsDispatching(true);
+            const response = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5003'}/api/orders/trigger-dispatch`);
+            toast.success(response.data.message || 'Dispatch process completed');
+            if (response.data.results && response.data.results.length > 0) {
+                toast.success(`Assigned ${response.data.results.filter(r => r.assigned_to).length} clusters.`);
+            }
+            fetchOrders();
+        } catch (error) {
+            console.error('Dispatch trigger error:', error);
+            toast.error(error.response?.data?.message || error.response?.data?.error || 'Failed to trigger ML dispatch');
+        } finally {
+            setIsDispatching(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -46,10 +64,20 @@ const Orders = () => {
                     <h1 className="text-2xl font-bold text-gray-800">Order Monitoring</h1>
                     <p className="text-gray-500">Track and manage customer orders</p>
                 </div>
-                <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md">
-                    <Download size={20} />
-                    Export Orders
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleTriggerDispatch}
+                        disabled={isDispatching}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm hover:shadow-md disabled:bg-indigo-400"
+                    >
+                        <Zap size={20} className={isDispatching ? "animate-pulse" : ""} />
+                        {isDispatching ? 'Optimizing...' : 'ML Auto-Dispatch'}
+                    </button>
+                    <button className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-sm hover:shadow-md">
+                        <Download size={20} />
+                        Export Orders
+                    </button>
+                </div>
             </div>
 
             {/* Filters and Search */}
