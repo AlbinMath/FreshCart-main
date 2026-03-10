@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Cart = require('../models/Cart');
+const Coupon = require('../models/Coupon');
 const OrderLedger = require('../models/OrderLedger');
 const { createGenesisBlock, createNextBlock } = require('../utils/ledgerUtils');
 const axios = require('axios');
@@ -18,24 +19,21 @@ const razorpay = new Razorpay({
 // Create Order (Initialize Razorpay)
 router.post('/create-order', async (req, res) => {
     try {
-        const { userId } = req.body; // Only trust userId (from auth middleware ideally)
+        const { userId, amount } = req.body; // Extract amount passed from frontend
 
-        // Securely fetch cart total
+        // Securely fetch cart total just to verify carts exist
         const cart = await Cart.findOne({ userId });
         if (!cart || cart.items.length === 0) {
             return res.status(400).json({ success: false, message: "Cart is empty" });
         }
 
-        // Calculate total amount from cart items
-        // Assumes item.price in cart is accurate. Ideally refetch from Product.
-        const totalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-
-        // Add tax/shipping if needed? For now just raw total. 
-        // Need to match frontend logic. Assuming frontend sends 'amount' which includes everything?
-        // To be safe, we rely on our calculation.
+        // Trust the frontend amount which includes dynamic delivery + taxes, 
+        // fallback to raw cart sum if not provided.
+        const rawCartSum = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const finalAmount = amount || rawCartSum;
 
         const options = {
-            amount: totalAmount * 100, // Amount in paise
+            amount: Math.round(finalAmount * 100), // Amount in paise, ensure integer
             currency: "INR",
             receipt: "order_rcptid_" + Date.now()
         };
@@ -75,7 +73,8 @@ router.post('/verify-payment', async (req, res) => {
             userId,
             items,
             totalAmount,
-            shippingAddress
+            shippingAddress,
+            couponCode
         } = req.body;
 
         // Verify Signature
@@ -114,7 +113,7 @@ router.post('/verify-payment', async (req, res) => {
                 userId,
                 orderId: generateOrderId(),
                 items: enrichedItems,
-                totalAmount: secureTotalAmount,
+                totalAmount: totalAmount || secureTotalAmount,
                 shippingAddress,
                 taxDetails: req.body.taxDetails,
                 paymentStatus: 'Paid',
@@ -181,6 +180,14 @@ router.post('/verify-payment', async (req, res) => {
                 });
             }
 
+            // Increment Coupon Usage
+            if (couponCode) {
+                await Coupon.findOneAndUpdate(
+                    { code: couponCode.toUpperCase() },
+                    { $inc: { usedCount: 1 } }
+                );
+            }
+
             // Clear User's Cart
             await Cart.findOneAndDelete({ userId });
 
@@ -238,7 +245,8 @@ router.post('/place-cod-order', async (req, res) => {
             items,
             totalAmount,
             shippingAddress,
-            taxDetails
+            taxDetails,
+            couponCode
         } = req.body;
 
         // Enrich items with storeAddress + preparationTime from Product collection
@@ -301,6 +309,14 @@ router.post('/place-cod-order', async (req, res) => {
             await Product.findByIdAndUpdate(item.productId, {
                 $inc: { stockQuantity: -item.quantity, orderCount: 1 }
             });
+        }
+
+        // Increment Coupon Usage
+        if (couponCode) {
+            await Coupon.findOneAndUpdate(
+                { code: couponCode.toUpperCase() },
+                { $inc: { usedCount: 1 } }
+            );
         }
 
         // Clear User's Cart

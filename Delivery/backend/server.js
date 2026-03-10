@@ -30,6 +30,7 @@ mongoose.connect(process.env.MONGODB_URI_Users)
 app.use('/api/delivery-agent', deliveryAgentRoutes);
 
 const DeliveryLocationLog = require('./models/DeliveryLocationLog');
+const DeliveryAgent = require('./models/DeliveryAgent');
 
 // Socket.io Connection
 io.on('connection', (socket) => {
@@ -47,8 +48,13 @@ io.on('connection', (socket) => {
         // Push location to IDS cluster engine
         try {
             if (data.agentId && data.location && data.location.lat && data.location.lng) {
+                const agentDoc = await DeliveryAgent.findById(data.agentId);
+                const agentName = agentDoc ? (agentDoc.fullName || 'Delivery Agent') : 'Delivery Agent';
+
                 await axios.post(`${process.env.IDS_CORE_API_URL || 'http://localhost:2012'}/api/agents/update-location`, {
                     agent_id: data.agentId,
+                    name: agentName,
+                    capacity: 10,
                     coordinates: [data.location.lng, data.location.lat],
                     status: 'available'
                 });
@@ -92,7 +98,6 @@ app.get('/', (req, res) => {
     res.send('Delivery Agent Backend is running');
 });
 
-const DeliveryAgent = require('./models/DeliveryAgent');
 const Schedule = require('./models/Schedule');
 
 // ... (existing imports)

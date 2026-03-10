@@ -69,8 +69,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order }) => {
                         {/* Order ID & Status */}
                         <div className="flex justify-between items-start">
                             <div>
-                                <p className="text-sm text-gray-500">Order ID</p>
-                                <p className="text-lg font-bold text-gray-800">#{order._id}</p>
+                                <p className="text-lg font-bold text-gray-800">#{order.orderId || (order._id ? (order._id.length > 12 ? order._id.substring(0, 8) + '...' : order._id) : 'N/A')}</p>
                             </div>
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${order.status === 'Completed' ? 'bg-green-100 text-green-700' :
                                 order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :

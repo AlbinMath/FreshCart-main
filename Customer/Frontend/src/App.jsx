@@ -15,6 +15,8 @@ import Orders from "./Pages/Orders";
 import ReviewOrder from "./Pages/ReviewOrder";
 import ProductDetails from "./Pages/ProductDetails";
 import ReportIssue from "./Pages/ReportIssue";
+import PremiumPlans from "./Pages/PremiumPlans";
+import FlashSalePage from "./Pages/FlashSalePage";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./Layout";
 import Loading from "./components/Loading";
@@ -64,6 +66,8 @@ function AppContent() {
                 <Route path="/rate-order/:orderId" element={<ReviewOrder />} />
                 <Route path="/rate-product/:orderId/:productId" element={<ReviewOrder />} />
                 <Route path="/report-issue" element={<ReportIssue />} />
+                <Route path="/premium-plans" element={<PremiumPlans />} />
+                <Route path="/flash-sale/:saleId" element={<FlashSalePage />} />
             </Route>
         </Routes>
     );

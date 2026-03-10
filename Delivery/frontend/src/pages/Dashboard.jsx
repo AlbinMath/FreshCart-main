@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Power, MapPin, Phone, Navigation, Package, DollarSign, Star, Clock, Calendar } from 'lucide-react';
+import toast from 'react-hot-toast';
 import ScheduleModal from '../components/ScheduleModal';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -11,6 +12,7 @@ const Dashboard = () => {
     const [activeSlot, setActiveSlot] = useState(null); // The current valid time slot string if any
     const [scheduleLoaded, setScheduleLoaded] = useState(false);
     const [userLocation, setUserLocation] = useState(null);
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Get Agent Info
     const agentData = JSON.parse(localStorage.getItem('agent') || '{}');
@@ -18,9 +20,21 @@ const Dashboard = () => {
 
     // 1. Fetch Schedule & Check Time
     useEffect(() => {
-        const checkSchedule = async () => {
+        const checkSchedule = async (isInitial = false) => {
             if (!agentId) return;
             try {
+                let currentOnlineState = isOnline;
+                // Fetch agent actual status if this is the initial load
+                if (isInitial) {
+                    try {
+                        const profileRes = await axios.get(`${import.meta.env.VITE_API_URL}/profile/${agentId}`);
+                        currentOnlineState = profileRes.data.isOnline;
+                        setIsOnline(currentOnlineState);
+                    } catch (err) {
+                        console.error("Error fetching agent profile:", err);
+                    }
+                }
+
                 const today = new Date().toISOString().split('T')[0];
                 const response = await axios.get(`${import.meta.env.VITE_API_URL}/schedule/${agentId}`);
 
@@ -58,13 +72,13 @@ const Dashboard = () => {
 
                     setActiveSlot(slotFound || null);
 
-                    if (!slotFound && isOnline) {
+                    if (!slotFound && currentOnlineState) {
                         // Force offline via API if slot ended
                         handlePowerToggle(false);
                     }
                 } else {
                     setActiveSlot(null);
-                    if (isOnline) handlePowerToggle(false);
+                    if (currentOnlineState) handlePowerToggle(false);
                 }
             } catch (err) {
                 console.error("Error fetching schedule:", err);
@@ -73,10 +87,10 @@ const Dashboard = () => {
             }
         };
 
-        checkSchedule();
-        const interval = setInterval(checkSchedule, 60000); // Check every minute
+        checkSchedule(true);
+        const interval = setInterval(() => checkSchedule(false), 60000); // Check every minute
         return () => clearInterval(interval);
-    }, [agentId, isOnline]);
+    }, [agentId, isOnline, refreshTrigger]);
 
     // 2. Force Location Update (Tracking)
     useEffect(() => {
@@ -93,7 +107,7 @@ const Dashboard = () => {
                     { enableHighAccuracy: true }
                 );
             } else {
-                alert("Geolocation is required to go online.");
+                toast.error("Geolocation is required to go online.");
                 setIsOnline(false);
             }
         }
@@ -106,17 +120,17 @@ const Dashboard = () => {
         const newState = forceState !== null ? forceState : !isOnline;
 
         if (newState === true && !activeSlot) {
-            alert("You can only start your shift within your scheduled slot.");
+            toast.error("You can only start your shift within your scheduled slot.");
             return;
         }
 
         try {
             await axios.put(`${import.meta.env.VITE_API_URL}/status/${agentId}`, { isOnline: newState });
             setIsOnline(newState);
-            if (newState === false && forceState !== null) alert("Shift Ended. You are now offline.");
+            if (newState === false && forceState !== null) toast.success("Shift Ended. You are now offline.");
         } catch (err) {
             console.error("Error updating status:", err);
-            if (forceState === null) alert("Failed to change status.");
+            if (forceState === null) toast.error("Failed to change status.");
         }
     };
 
@@ -153,7 +167,11 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-6">
-            <ScheduleModal isOpen={isScheduleOpen} onClose={() => setIsScheduleOpen(false)} />
+            <ScheduleModal
+                isOpen={isScheduleOpen}
+                onClose={() => setIsScheduleOpen(false)}
+                onScheduleUpdate={() => setRefreshTrigger(prev => prev + 1)}
+            />
 
             {/* Top Bar - Status */}
             <div className={`p-4 rounded-xl shadow-sm border flex items-center justify-between transition-colors

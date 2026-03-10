@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Crown } from 'lucide-react';
 import icon from '../components/icon.png';
 
 function Navbar() {
@@ -30,6 +31,10 @@ function Navbar() {
                     <div className="flex items-center space-x-4">
                         {currentUser ? (
                             <>
+                                <Link to="/premium-plans" className="flex items-center space-x-2 text-yellow-600 hover:text-yellow-700 mr-4 font-bold">
+                                    <Crown size={20} className="text-yellow-500" />
+                                    <span className="hidden sm:inline text-sm">Premium Plans</span>
+                                </Link>
                                 <Link to="/cart" className="flex items-center space-x-2 text-gray-700 hover:text-green-600 mr-2">
                                     <div className="relative">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,9 +58,22 @@ function Navbar() {
                                     {/* Dropdown Menu */}
                                     {isMenuOpen && (
                                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 ring-1 ring-black ring-opacity-5">
-                                            <div className="px-4 py-3 border-b border-gray-100">
+                                            <div className="px-4 py-3 border-b border-gray-100 flex flex-col gap-1">
                                                 <p className="text-sm text-gray-500">Signed in as</p>
                                                 <p className="text-sm font-bold text-gray-900 truncate">{currentUser.name || currentUser.displayName}</p>
+
+                                                <div className="mt-1 flex items-center gap-1.5">
+                                                    {currentUser.activePremiumPlan ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800 border border-yellow-300 shadow-sm leading-tight uppercase tracking-wider">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" /></svg>
+                                                            {currentUser.activePremiumPlan.planName} Plan
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200 leading-tight uppercase tracking-wider">
+                                                            Basic Plan
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <Link

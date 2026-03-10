@@ -80,7 +80,7 @@ const MyDelivery = () => {
             }, 1000);
         } else if (timer === 0 && nearestOrder) {
             // Auto Accept on Timeout
-            handleAcceptOrder(nearestOrder._id);
+            handleAcceptOrder(nearestOrder._id, nearestOrder.isCluster);
         }
         return () => clearInterval(interval);
     }, [nearestOrder, timer]);
@@ -125,7 +125,7 @@ const MyDelivery = () => {
     };
 
     const fetchNearestOrder = (isBackground = false) => {
-        if (!agentId || currentDeliveries.length >= 5) return;
+        if (!agentId) return;
 
         if (!isBackground) {
             setLoadingNearest(true);
@@ -148,7 +148,7 @@ const MyDelivery = () => {
                         agentId
                     });
 
-                    if (response.data && response.data.message !== 'No active orders found') {
+                    if (response.data && response.data._id) {
                         setNearestOrder(response.data);
                         setTimer(180); // Reset timer for new order
                     } else {
@@ -173,13 +173,13 @@ const MyDelivery = () => {
         );
     };
 
-    const handleAcceptOrder = async (orderId) => {
+    const handleAcceptOrder = async (orderId, isCluster = false) => {
         try {
             setActionLoading(true);
-            await axios.put('http://localhost:5007/api/delivery-agent/accept-order', {
-                orderId,
-                agentId
-            });
+            const endpoint = isCluster ? '/accept-cluster' : '/accept-order';
+            const payload = isCluster ? { clusterId: orderId, agentId } : { orderId, agentId };
+
+            await axios.put(`http://localhost:5007/api/delivery-agent${endpoint}`, payload);
 
             setNearestOrder(null); // Remove from nearest
             fetchCurrentDeliveries(); // Move to current list
@@ -190,19 +190,19 @@ const MyDelivery = () => {
 
         } catch (err) {
             console.error("Error accepting order:", err);
-            alert("Failed to accept order");
+            alert("Failed to accept assignment. Maximum limit might be reached.");
         } finally {
             setActionLoading(false);
         }
     };
 
-    const handleRejectOrder = async (orderId) => {
+    const handleRejectOrder = async (orderId, isCluster = false) => {
         try {
             setActionLoading(true);
-            await axios.put('http://localhost:5007/api/delivery-agent/reject-order', {
-                orderId,
-                agentId
-            });
+            const endpoint = isCluster ? '/reject-cluster' : '/reject-order';
+            const payload = isCluster ? { clusterId: orderId, agentId } : { orderId, agentId };
+
+            await axios.put(`http://localhost:5007/api/delivery-agent${endpoint}`, payload);
             setNearestOrder(null);
             fetchNearestOrder(); // Find next one
         } catch (err) {
@@ -289,46 +289,92 @@ const MyDelivery = () => {
 
                 {currentDeliveries.length > 0 ? (
                     <div className="space-y-4">
-                        {currentDeliveries.map((delivery) => (
-                            <div
-                                key={delivery._id}
-                                onClick={() => openOrderDetails(delivery)}
-                                className="border border-green-100 bg-green-50 p-4 rounded-lg cursor-pointer hover:bg-green-100 transition-colors"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="font-bold text-gray-800">Order #{delivery._id.substring(0, 8)}...</h3>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            {delivery.shopAddress ? delivery.shopAddress : 'Location available'}
-                                        </p>
-                                    </div>
-                                    <span className="bg-green-600 text-white text-xs px-2 py-1 rounded font-medium">
-                                        {delivery.status}
-                                    </span>
-                                </div>
+                        {currentDeliveries.map((delivery, index) => {
+                            const isNext = delivery.isNextInSequence !== false; // Default to true if flag is missing for backward compatibility
 
-                                <div className="flex gap-2 mt-4 pt-3 border-t border-green-200">
-                                    <button
-                                        onClick={(e) => handleTrackOrder(e, delivery)}
-                                        className="flex-1 bg-white border border-blue-500 text-blue-600 text-sm font-medium py-2 px-3 rounded-lg hover:bg-blue-50 transition-colors flex items-center justify-center gap-1"
-                                    >
-                                        <MapPin size={16} />
-                                        Track Location
-                                    </button>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleCompleteOrder(delivery);
-                                        }}
-                                        disabled={actionLoading}
-                                        className="flex-1 bg-green-600 text-white text-sm font-medium py-2 px-3 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
-                                    >
-                                        <CheckCircle size={16} />
-                                        Complete
-                                    </button>
+                            return (
+                                <div
+                                    key={delivery._id}
+                                    onClick={() => isNext ? openOrderDetails(delivery) : null}
+                                    className={`border p-4 rounded-lg transition-colors ${isNext
+                                        ? "border-green-100 bg-green-50 cursor-pointer hover:bg-green-100 shadow-sm"
+                                        : "border-gray-200 bg-gray-50 opacity-75 cursor-not-allowed"
+                                        }`}
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${isNext ? "bg-green-600 text-white" : "bg-gray-300 text-gray-600"
+                                                }`}>
+                                                {index + 1}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-gray-800">Order #{delivery.orderId || (delivery._id ? delivery._id.substring(0, 8) + '...' : 'N/A')}</h3>
+                                                <div className="mt-2 text-sm">
+                                                    <div className="flex items-start gap-1 text-gray-600 mb-1">
+                                                        <span className="font-medium text-gray-700 min-w-[65px]">Pick Up:</span>
+                                                        <span className="flex-1">{delivery.shopAddress ? delivery.shopAddress : 'Location available'}</span>
+                                                    </div>
+                                                    <div className="flex items-start gap-1 text-gray-600">
+                                                        <span className="font-medium text-gray-700 min-w-[65px]">Drop Off:</span>
+                                                        <span className="flex-1">
+                                                            {delivery.shippingAddress
+                                                                ? (typeof delivery.shippingAddress === 'string'
+                                                                    ? delivery.shippingAddress
+                                                                    : delivery.shippingAddress.address || `${delivery.shippingAddress.street || ''} ${delivery.shippingAddress.city || ''}`.trim() || 'Address available')
+                                                                : 'Address available'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <span className={`text-white text-xs px-2 py-1 rounded font-medium ${isNext ? "bg-green-600" : "bg-gray-400"
+                                                }`}>
+                                                {isNext ? delivery.status : "Waiting"}
+                                            </span>
+                                            {delivery.totalAmount && (
+                                                <span className="font-bold text-gray-800">₹{delivery.totalAmount}</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {!isNext && (
+                                        <div className="mt-3 text-xs text-orange-600 bg-orange-50 p-2 rounded border border-orange-100">
+                                            Please complete previous deliveries in your route sequence first.
+                                        </div>
+                                    )}
+
+                                    <div className={`flex gap-2 mt-4 pt-3 border-t ${isNext ? "border-green-200" : "border-gray-200"
+                                        }`}>
+                                        <button
+                                            onClick={(e) => handleTrackOrder(e, delivery)}
+                                            disabled={!isNext}
+                                            className={`flex-1 border text-sm font-medium py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors ${isNext
+                                                ? "bg-white border-blue-500 text-blue-600 hover:bg-blue-50"
+                                                : "bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed"
+                                                }`}
+                                        >
+                                            <MapPin size={16} />
+                                            Track Location
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCompleteOrder(delivery);
+                                            }}
+                                            disabled={actionLoading || !isNext}
+                                            className={`flex-1 text-white text-sm font-medium py-2 px-3 rounded-lg flex items-center justify-center gap-1 transition-colors ${isNext && !actionLoading
+                                                ? "bg-green-600 hover:bg-green-700"
+                                                : "bg-gray-400 cursor-not-allowed"
+                                                }`}
+                                        >
+                                            <CheckCircle size={16} />
+                                            Complete
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 ) : (
                     <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-200">
@@ -341,75 +387,64 @@ const MyDelivery = () => {
                 )}
             </div>
 
-            {/* Nearest Shop Order Section */}
-            {/* Show only if limit not reached */}
-            {currentDeliveries.length < 5 ? (
-                <>
-                    {nearestOrder && (
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                            <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                <Navigation className="text-orange-600" size={20} />
-                                Nearest Shop Order
-                            </h2>
+            {nearestOrder && (
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                        <Navigation className="text-orange-600" size={20} />
+                        Nearest Shop Order
+                    </h2>
 
-                            {loadingNearest ? (
-                                <div className="text-gray-500 text-sm">Finding nearest order...</div>
-                            ) : locationError ? (
-                                <div className="text-red-500 text-sm">{locationError}</div>
-                            ) : (
-                                <div className="border border-orange-100 bg-orange-50 p-4 rounded-lg">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h3 className="font-bold text-gray-800">{nearestOrder.shopName}</h3>
-                                            <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
-                                                <MapPin size={14} />
-                                                {nearestOrder.shopAddress}
-                                            </p>
-                                            <p className="text-xs text-gray-500 mt-1">
-                                                Distance: <span className="font-medium text-gray-800">{nearestOrder.distance} km</span> away
-                                            </p>
-                                        </div>
-                                        <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded font-medium">
-                                            Ready for Pickup
-                                        </span>
-                                    </div>
-
-                                    <div className="border-t border-orange-200 my-3 pt-3">
-                                        <p className="text-sm font-medium text-gray-700">Order #{nearestOrder._id.substring(0, 8)}...</p>
-                                        <p className="text-xs text-gray-500 mt-1">Items: {nearestOrder.items?.length || 0}</p>
-                                    </div>
-
-                                    <div className="flex gap-3 justify-between">
-                                        <button
-                                            onClick={() => handleRejectOrder(nearestOrder._id)}
-                                            disabled={actionLoading}
-                                            className="flex-1 bg-white border border-red-500 text-red-600 hover:bg-red-50 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-70"
-                                        >
-                                            Reject
-                                        </button>
-                                        <button
-                                            onClick={() => handleAcceptOrder(nearestOrder._id)}
-                                            disabled={actionLoading}
-                                            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-70"
-                                        >
-                                            {actionLoading ? 'Accepting...' : `Accept (${formatTime(timer)})`}
-                                        </button>
-                                    </div>
+                    {loadingNearest ? (
+                        <div className="text-gray-500 text-sm">Finding nearest order...</div>
+                    ) : locationError ? (
+                        <div className="text-red-500 text-sm">{locationError}</div>
+                    ) : (
+                        <div className="border border-orange-100 bg-orange-50 p-4 rounded-lg">
+                            <div className="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 className="font-bold text-gray-800">{nearestOrder.shopName}</h3>
+                                    <p className="text-sm text-gray-600 flex items-center gap-1 mt-1">
+                                        <MapPin size={14} />
+                                        {nearestOrder.shopAddress}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Distance: <span className="font-medium text-gray-800">{nearestOrder.distance} {nearestOrder.distance === 'Optimized' ? '' : 'km'} {nearestOrder.distance === 'Optimized' ? '' : 'away'}</span>
+                                    </p>
                                 </div>
-                            )}
-                        </div>
-                    )}
+                                <span className="bg-orange-600 text-white text-xs px-2 py-1 rounded font-medium">
+                                    {nearestOrder.isCluster ? 'Clustered Route' : 'Ready for Pickup'}
+                                </span>
+                            </div>
 
-                    {!nearestOrder && loadingNearest && (
-                        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                            <div className="text-gray-500 text-sm">Finding nearby orders...</div>
+                            <div className="border-t border-orange-200 my-3 pt-3">
+                                <p className="text-sm font-medium text-gray-700">{nearestOrder.isCluster ? 'Cluster ID' : 'Order'} #{nearestOrder.clusterId || nearestOrder.orderId || (nearestOrder._id ? nearestOrder._id.substring(0, 12) + '...' : 'N/A')}</p>
+                                <p className="text-xs text-gray-500 mt-1">{nearestOrder.isCluster ? `Drops: ${nearestOrder.orderCount}` : `Items: ${nearestOrder.items?.length || 0}`}</p>
+                            </div>
+
+                            <div className="flex gap-3 justify-between">
+                                <button
+                                    onClick={() => handleRejectOrder(nearestOrder._id, nearestOrder.isCluster)}
+                                    disabled={actionLoading}
+                                    className="flex-1 bg-white border border-red-500 text-red-600 hover:bg-red-50 font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-70"
+                                >
+                                    Reject
+                                </button>
+                                <button
+                                    onClick={() => handleAcceptOrder(nearestOrder._id, nearestOrder.isCluster)}
+                                    disabled={actionLoading}
+                                    className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-70"
+                                >
+                                    {actionLoading ? 'Accepting...' : `Accept (${formatTime(timer)})`}
+                                </button>
+                            </div>
                         </div>
                     )}
-                </>
-            ) : (
-                <div className="bg-yellow-50 p-6 rounded-xl shadow-sm border border-yellow-100 text-center">
-                    <div className="text-yellow-800 font-medium">Maximum Active Orders Reached</div>
-                    <p className="text-sm text-yellow-600 mt-1">You have 5 active deliveries. Please complete some orders to accept new ones.</p>
+                </div>
+            )}
+
+            {!nearestOrder && loadingNearest && (
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div className="text-gray-500 text-sm">Finding nearby orders...</div>
                 </div>
             )}
 
@@ -466,7 +501,7 @@ const MyDelivery = () => {
                                         <Package size={20} />
                                     </div>
                                     <div>
-                                        <div className="font-medium text-gray-800">Order #{item._id ? item._id.substring(0, 8) : 'N/A'}...</div>
+                                        <div className="font-medium text-gray-800">Order #{item.orderId || (item._id ? item._id.substring(0, 8) + '...' : 'N/A')}</div>
                                         <div className="text-xs text-gray-500">
                                             {new Date(item.updatedAt).toLocaleDateString()} • {item.shippingAddress?.city || 'N/A'}
                                         </div>
@@ -507,7 +542,7 @@ const MyDelivery = () => {
                     fetchHistory();
                 }}
             />
-        </div>
+        </div >
     );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import DeliveryEstimate from './DeliveryEstimate';
 
-export default function ProductDetailsDialog({ product, onClose }) {
+export default function ProductDetailsDialog({ product, onClose, activeFlashSalePrice }) {
     if (!product) return null;
 
     const [activeImage, setActiveImage] = useState(product.images?.[0] || null);
@@ -93,9 +93,18 @@ export default function ProductDetailsDialog({ product, onClose }) {
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-3xl font-bold text-green-600">{formatPrice(product.sellingPrice)}</p>
-                            {product.originalPrice && product.originalPrice > product.sellingPrice && (
-                                <p className="text-sm text-gray-400 line-through">{formatPrice(product.originalPrice)}</p>
+                            {activeFlashSalePrice !== null && activeFlashSalePrice !== undefined ? (
+                                <>
+                                    <p className="text-3xl font-bold text-red-600">{formatPrice(activeFlashSalePrice)}</p>
+                                    <p className="text-sm text-gray-400 line-through">{formatPrice(product.sellingPrice)}</p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-3xl font-bold text-green-600">{formatPrice(product.sellingPrice)}</p>
+                                    {product.originalPrice && product.originalPrice > product.sellingPrice && (
+                                        <p className="text-sm text-gray-400 line-through">{formatPrice(product.originalPrice)}</p>
+                                    )}
+                                </>
                             )}
                             <p className="text-xs text-gray-500 mt-1">per {product.unit}</p>
                         </div>

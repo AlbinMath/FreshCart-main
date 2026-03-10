@@ -17,15 +17,17 @@ const customerConn = mongoose.createConnection(process.env.MONGODB_URI_Customer)
 const productsConn = mongoose.createConnection(process.env.MONGODB_URI_Products);
 const chatbotConn = mongoose.createConnection(process.env.MONGODB_URI_ChatBot);
 const announcementsConn = mongoose.createConnection(process.env.MONGODB_URI_Announcements);
+const adminConn = mongoose.createConnection(process.env.MONGODB_URI_admin);
 
 usersConn.on('connected', () => console.log('MongoDB Connected to Users Database'));
 customerConn.on('connected', () => console.log('MongoDB Connected to Customer Database'));
 productsConn.on('connected', () => console.log('MongoDB Connected to Products Database'));
 chatbotConn.on('connected', () => console.log('MongoDB Connected to ChatBot Database'));
 announcementsConn.on('connected', () => console.log('MongoDB Connected to Announcements Database'));
+adminConn.on('connected', () => console.log('MongoDB Connected to Admin Database'));
 
 // Export connections for models
-module.exports = { usersConn, customerConn, productsConn, chatbotConn, announcementsConn };
+module.exports = { usersConn, customerConn, productsConn, chatbotConn, announcementsConn, adminConn };
 
 // Routes
 app.get('/', (req, res) => {
@@ -52,6 +54,12 @@ app.use('/api/reviews', reviewRoutes);
 
 const reportRoutes = require('./routes/reportRoutes');
 app.use('/api/reports', reportRoutes);
+
+const premiumPlanRoutes = require('./routes/premiumPlanRoutes');
+app.use('/api/public/premium-plans', premiumPlanRoutes);
+
+const marketingRoutes = require('./routes/marketingRoutes');
+app.use('/api/marketing', marketingRoutes);
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);

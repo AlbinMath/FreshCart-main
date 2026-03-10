@@ -16,12 +16,18 @@ router.post('/', async (req, res) => {
 // Update an agent's location (continuous ping)
 router.post('/update-location', async (req, res) => {
     try {
-        const { agent_id, coordinates, status } = req.body;
-        const agent = await Agent.findOneAndUpdate(
-            { agent_id },
+        const { agent_id, name, coordinates } = req.body;
+
+        // Coordinates come in as [lng, lat] from Delivery app
+
+        const agent = await Agent.findByIdAndUpdate(
+            agent_id,
             {
-                'current_location.coordinates': coordinates,
-                ...(status && { status })
+                $set: {
+                    'location.lng': coordinates[0],
+                    'location.lat': coordinates[1],
+                    'location.lastUpdated': new Date()
+                }
             },
             { new: true }
         );
@@ -33,40 +39,56 @@ router.post('/update-location', async (req, res) => {
         // Broadcast location update
         const io = req.app.get('io');
         if (io) {
-            io.emit('agent_moved', { agent_id, coordinates, status });
+            io.emit('agent_moved', { agent_id, coordinates, status: agent.status });
         }
 
         res.json(agent);
     } catch (error) {
+        console.error("Location update err:", error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get nearby agents
+function getHaversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Get nearby agents (Dashboard might use this)
 router.get('/nearby', async (req, res) => {
     try {
         const { lng, lat, radiusStr } = req.query; // Radius in meters
         const lngNum = parseFloat(lng);
         const latNum = parseFloat(lat);
-        const radius = parseFloat(radiusStr) || 5000; // default 5km
+        const radius = (parseFloat(radiusStr) || 5000) / 1000; // km
 
         if (isNaN(lngNum) || isNaN(latNum)) {
             return res.status(400).json({ error: 'Invalid coordinates' });
         }
 
-        const agents = await Agent.find({
-            current_location: {
-                $near: {
-                    $geometry: {
-                        type: 'Point',
-                        coordinates: [lngNum, latNum]
-                    },
-                    $maxDistance: radius
-                }
-            }
+        const allAgents = await Agent.find({
+            'location.lat': { $exists: true },
+            'location.lng': { $exists: true }
         });
 
-        res.json(agents);
+        const nearbyAgents = allAgents.filter(agent => {
+            const dist = getHaversineDistance(
+                latNum,
+                lngNum,
+                agent.location.lat,
+                agent.location.lng
+            );
+            agent._doc.distance = dist; // Optional helpful flag
+            return dist <= radius;
+        });
+
+        res.json(nearbyAgents);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -76,7 +98,7 @@ router.get('/nearby', async (req, res) => {
 router.get('/:agent_id/assigned-cluster', async (req, res) => {
     try {
         const { agent_id } = req.params;
-        const agent = await Agent.findOne({ agent_id });
+        const agent = await Agent.findById(agent_id);
 
         if (!agent) {
             return res.status(404).json({ error: 'Agent not found in IDS' });
@@ -88,7 +110,7 @@ router.get('/:agent_id/assigned-cluster', async (req, res) => {
         const assignedClusters = await Cluster.find({
             assigned_agent_id: agent._id,
             status: 'assigned'
-        }).populate('route_sequence');
+        });
 
         res.json(assignedClusters);
 

@@ -1,31 +1,19 @@
 const mongoose = require('mongoose');
 
-const LocationSchema = new mongoose.Schema({
-    type: {
-        type: String,
-        enum: ['Point'],
-        required: true,
-        default: 'Point'
-    },
-    coordinates: {
-        type: [Number], // [longitude, latitude]
-        required: true
-    }
-});
+const usersDB = mongoose.createConnection(process.env.MONGODB_URI_Users);
 
 const AgentSchema = new mongoose.Schema({
-    agent_id: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    current_location: { type: LocationSchema, required: true },
-    status: {
-        type: String,
-        enum: ['offline', 'available', 'busy'],
-        default: 'available'
-    },
-    capacity: { type: Number, required: true }, // Total capacity rating
-    current_load: { type: Number, default: 0 } // Currently assigned load
-}, { timestamps: true });
+    fullName: { type: String, required: true },
+    contactNumber: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    status: { type: String, default: 'active' },
+    uniqueId: { type: String, unique: true, sparse: true },
+    isOnline: { type: Boolean, default: false },
+    location: {
+        lat: { type: Number },
+        lng: { type: Number },
+        lastUpdated: { type: Date }
+    }
+}, { timestamps: true, collection: 'Deliveryagent' });
 
-AgentSchema.index({ current_location: '2dsphere' });
-
-module.exports = mongoose.model('Agent', AgentSchema);
+module.exports = usersDB.model('Agent', AgentSchema);

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutGrid, Truck, Navigation, DollarSign, MapPin, Settings, LogOut } from 'lucide-react';
+import { LayoutGrid, Truck, DollarSign, MapPin, Settings, LogOut } from 'lucide-react';
 import deliveryImg from '../img/delivery.png';
 
 const Sidebar = () => {
@@ -19,7 +19,6 @@ const Sidebar = () => {
     const navItems = [
         { icon: LayoutGrid, label: 'Dashboard', path: '/dashboard' },
         { icon: Truck, label: 'My Deliveries', path: '/my-delivery', badge: 3 },
-        { icon: Navigation, label: 'Route Planning', path: '/route-planning' },
         { icon: DollarSign, label: 'Earnings', path: '/earnings' },
         { icon: MapPin, label: 'Location Tracking', path: '/tracking' },
         { icon: Settings, label: 'Profile Settings', path: '/settings' },
@@ -76,15 +75,6 @@ const Sidebar = () => {
 
             {/* Footer Actions */}
             <div className="p-4 border-t border-gray-200 space-y-2">
-                {/* Notifications Mock */}
-                <div className="flex items-center justify-between px-4 py-3 text-gray-700 hover:bg-gray-100 rounded-lg cursor-pointer">
-                    <div className="flex items-center gap-3">
-                        <span className="p-1"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-bell"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg></span>
-                        <span className="font-medium">Notifications</span>
-                    </div>
-                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">3</span>
-                </div>
-
                 <button
                     onClick={handleLogout}
                     className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors"

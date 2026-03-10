@@ -21,6 +21,7 @@ function Home() {
     const [searchTerm, setSearchTerm] = useState('');
     const [addingToCart, setAddingToCart] = useState(new Set());
     const [viewingProduct, setViewingProduct] = useState(null);
+    const [flashSales, setFlashSales] = useState([]);
 
 
     // Fetch products from the public API
@@ -47,6 +48,17 @@ function Home() {
         };
 
         fetchProducts();
+
+        const fetchFlashSales = async () => {
+            try {
+                const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/marketing/flash-sales`);
+                const data = await res.json();
+                if (Array.isArray(data)) setFlashSales(data);
+            } catch (err) {
+                console.error('Error fetching flash sales:', err);
+            }
+        };
+        fetchFlashSales();
 
         const intervalId = setInterval(() => {
             fetchProducts(true);
@@ -100,6 +112,23 @@ function Home() {
         }).format(price);
     };
 
+    const getActiveFlashSalePrice = (product) => {
+        if (!product.activeFlashSale || !product.flashSalePrice) return null;
+
+        // Find if this specific flash sale is loaded and currently active
+        const sale = flashSales.find(s => s._id === product.activeFlashSale);
+        if (!sale) return null;
+
+        const now = new Date();
+        const start = new Date(sale.startTime);
+        const end = new Date(sale.endTime);
+
+        if (now >= start && now <= end && sale.status === 'Active') {
+            return product.flashSalePrice;
+        }
+        return null;
+    };
+
     const { showToast } = useToast();
 
     const handleAddToCart = async (product) => {
@@ -117,11 +146,14 @@ function Home() {
         setAddingToCart(prev => new Set(prev).add(product._id));
 
         try {
+            const activePrice = getActiveFlashSalePrice(product);
+            const finalPrice = activePrice !== null ? activePrice : product.sellingPrice;
+
             // Construct the item object matching the Cart model
             const cartItem = {
                 productId: product._id,
                 productName: product.productName,
-                price: product.sellingPrice,
+                price: finalPrice,
                 quantity: 1,
                 image: product.images && product.images.length > 0 ? product.images[0] : null,
                 stock: product.stockQuantity,
@@ -167,6 +199,63 @@ function Home() {
                 </div>
 
 
+
+
+                {/* Flash Sales Banner Section */}
+                {flashSales.length > 0 && (
+                    <div className="mb-10 space-y-4">
+                        {flashSales.map(sale => {
+                            // Compute time remaining for mini-countdown
+                            const endMs = new Date(sale.endTime) - Date.now();
+                            const hours = Math.max(0, Math.floor(endMs / (1000 * 60 * 60)));
+                            const minutes = Math.max(0, Math.floor((endMs % (1000 * 60 * 60)) / (1000 * 60)));
+                            return (
+                                <div
+                                    key={sale._id}
+                                    onClick={() => navigate(`/flash-sale/${sale._id}`)}
+                                    className="relative rounded-2xl overflow-hidden shadow-xl cursor-pointer group"
+                                    style={{ minHeight: '160px', background: 'linear-gradient(135deg, #c0392b 0%, #e67e22 60%, #f39c12 100%)' }}
+                                >
+                                    {/* Background banner image */}
+                                    {sale.bannerImage && (
+                                        <div
+                                            className="absolute inset-0 bg-cover bg-center opacity-30 group-hover:opacity-40 transition-opacity duration-300"
+                                            style={{ backgroundImage: `url(${sale.bannerImage})` }}
+                                        />
+                                    )}
+                                    {/* Decorative lightning */}
+                                    <div className="absolute right-8 top-0 bottom-0 flex items-center opacity-10 text-white pointer-events-none select-none">
+                                        <span style={{ fontSize: '120px', lineHeight: 1 }}>&#9889;</span>
+                                    </div>
+                                    {/* Content */}
+                                    <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6 px-8 py-7 text-white">
+                                        <div className="flex-1">
+                                            <div className="inline-flex items-center gap-1.5 bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full mb-3 backdrop-blur-sm animate-pulse">
+                                                &#9679; LIVE FLASH SALE
+                                            </div>
+                                            <h2 className="text-3xl font-extrabold drop-shadow-md mb-1">{sale.title}</h2>
+                                            {sale.description && (
+                                                <p className="text-white/80 text-sm line-clamp-2 max-w-lg">{sale.description}</p>
+                                            )}
+                                        </div>
+                                        {/* Countdown + CTA */}
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="bg-black/30 backdrop-blur-md rounded-xl px-5 py-3 text-center border border-white/20">
+                                                <p className="text-white/60 text-[10px] uppercase tracking-widest mb-1">Ends in</p>
+                                                <span className="text-2xl font-extrabold tabular-nums">
+                                                    {String(hours).padStart(2, '0')}h {String(minutes).padStart(2, '0')}m
+                                                </span>
+                                            </div>
+                                            <div className="bg-white text-orange-600 font-bold text-sm px-5 py-2 rounded-xl shadow-lg group-hover:bg-orange-50 transition">
+                                                Shop Now &#8594;
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
 
 
                 {/* Product Browsing Section */}
@@ -228,7 +317,14 @@ function Home() {
                                                 </div>
 
                                                 {/* Product Info */}
-                                                <div className="p-4">
+                                                <div className="p-4 relative">
+                                                    {/* Flash Sale Badge */}
+                                                    {getActiveFlashSalePrice(product) !== null && (
+                                                        <div className="absolute -top-12 right-2 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded-md shadow-md shadow-red-500/30 flex items-center gap-1 z-10 animate-pulse">
+                                                            <span>⚡</span>FLASH SALE
+                                                        </div>
+                                                    )}
+
                                                     <h3 className="font-semibold text-lg text-center text-gray-800 mb-2 line-clamp-2">
                                                         {product.productName}
                                                     </h3>
@@ -247,13 +343,26 @@ function Home() {
                                                     {/* Price */}
                                                     <div className="flex items-center justify-between mb-3">
                                                         <div>
-                                                            <span className="text-xl font-bold text-green-600">
-                                                                {formatPrice(product.sellingPrice)}
-                                                            </span>
-                                                            {product.originalPrice && product.originalPrice > product.sellingPrice && (
-                                                                <span className="text-sm text-gray-500 line-through ml-2">
-                                                                    {formatPrice(product.originalPrice)}
-                                                                </span>
+                                                            {getActiveFlashSalePrice(product) !== null ? (
+                                                                <>
+                                                                    <span className="text-xl font-bold text-red-600">
+                                                                        {formatPrice(getActiveFlashSalePrice(product))}
+                                                                    </span>
+                                                                    <span className="text-sm text-gray-400 line-through ml-2">
+                                                                        {formatPrice(product.sellingPrice)}
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span className="text-xl font-bold text-green-600">
+                                                                        {formatPrice(product.sellingPrice)}
+                                                                    </span>
+                                                                    {product.originalPrice && product.originalPrice > product.sellingPrice && (
+                                                                        <span className="text-sm text-gray-500 line-through ml-2">
+                                                                            {formatPrice(product.originalPrice)}
+                                                                        </span>
+                                                                    )}
+                                                                </>
                                                             )}
                                                         </div>
 
@@ -345,10 +454,10 @@ function Home() {
             </div>
 
 
-            {/* Product Details Modal */}
             <ProductDetailsDialog
                 product={viewingProduct}
                 onClose={() => setViewingProduct(null)}
+                activeFlashSalePrice={viewingProduct ? getActiveFlashSalePrice(viewingProduct) : null}
             />
 
             {/* Chat Bot Interface */}

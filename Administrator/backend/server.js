@@ -23,9 +23,15 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
-app.use('/api/marketing', require('./routes/marketing'));
+const marketingRouter = require('./routes/marketing');
+app.use('/api/marketing', marketingRouter);
 app.use('/api/antigravity', require('./routes/ledgerRoutes'));
 app.use('/api/premium-plans', require('./routes/premiumPlans'));
+
+// New Admin Logic Routes
+app.use('/api/admin/sellers', require('./routes/adminSellers'));
+app.use('/api/admin/customers', require('./routes/adminCustomers'));
+app.use('/api/admin/tax', require('./routes/adminTax'));
 
 
 app.get('/', (req, res) => {
@@ -34,4 +40,13 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+
+    // Flash Sale Status Auto-Updater
+    const { autoUpdateFlashSaleStatuses } = marketingRouter;
+    // Run immediately on startup to catch any missed transitions
+    setTimeout(autoUpdateFlashSaleStatuses, 3000);
+    // Then run every 60 seconds
+    setInterval(autoUpdateFlashSaleStatuses, 60 * 1000);
+    console.log('[Flash Sale Scheduler] Auto-status updater started (every 60s)');
 });
+

@@ -132,7 +132,7 @@ const DeliveryCompletionDialog = ({ isOpen, onClose, order, onCompleteSuccess })
                     <div className="bg-gray-50 p-4 rounded-xl space-y-2">
                         <div className="flex justify-between items-start">
                             <div>
-                                <h3 className="font-semibold text-gray-800">Order #{order._id.substring(0, 8)}...</h3>
+                                <h3 className="font-semibold text-gray-800">Order #{order.orderId || (order._id ? order._id.substring(0, 8) + '...' : 'N/A')}</h3>
                                 <p className="text-xs text-gray-500">Payment: <span className="font-bold uppercase text-gray-700">{order.paymentMethod || 'Prepaid'}</span></p>
                             </div>
                             <span className="font-bold text-xl text-green-700">₹{order.totalAmount}</span>
@@ -242,7 +242,7 @@ const DeliveryCompletionDialog = ({ isOpen, onClose, order, onCompleteSuccess })
 
                 </div>
             </div>
-        </div>
+        </div >
     );
 };
 

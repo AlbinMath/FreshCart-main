@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Check, Star, Shield, Zap, Clock, Truck, ShoppingBag, Gift, Heart, Plus, Edit2, Trash2, Eye, EyeOff, Crown } from 'lucide-react';
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import {
     Dialog,
     DialogContent,
@@ -32,7 +31,7 @@ const PremiumDelivery = () => {
 
     // Form State
     const [formData, setFormData] = useState({
-        type: 'seller',
+        type: 'customer',
         name: '',
         price: '',
         duration: '',
@@ -79,7 +78,7 @@ const PremiumDelivery = () => {
     const openCreateDialog = () => {
         setCurrentPlan(null);
         setFormData({
-            type: 'seller',
+            type: 'customer',
             name: '',
             price: '',
             duration: '',
@@ -257,89 +256,41 @@ const PremiumDelivery = () => {
                             <span className="text-gradient-gold">Premium</span> Delivery Plans
                         </h1>
                         <p className="text-gray-500 text-lg max-w-2xl">
-                            Unlock exclusive benefits for your users. Manage subscription tiers for both sellers and customers from a single dashboard.
+                            Unlock exclusive benefits for your users. Manage subscription tiers for customers from a single dashboard.
                         </p>
                     </div>
-                    <Button onClick={openCreateDialog} className="bg-gray-900 hover:bg-gray-800 text-white shadow-lg shadow-gray-200 hover:shadow-xl transition-all h-12 px-6 rounded-xl">
-                        <Plus className="mr-2 h-5 w-5" /> Add New Plan
-                    </Button>
                 </div>
 
-                <Tabs defaultValue="seller" className="w-full space-y-8">
-                    <div className="flex justify-center">
-                        <TabsList className="grid w-full max-w-md grid-cols-2 p-1 bg-white border border-gray-200 rounded-2xl shadow-sm h-14">
-                            <TabsTrigger
-                                value="seller"
-                                className="rounded-xl text-base font-medium data-[state=active]:bg-gray-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all h-full"
-                            >
-                                For Sellers
-                            </TabsTrigger>
-                            <TabsTrigger
-                                value="customer"
-                                className="rounded-xl text-base font-medium data-[state=active]:bg-gray-900 data-[state=active]:text-white data-[state=active]:shadow-md transition-all h-full"
-                            >
-                                For Customers
-                            </TabsTrigger>
-                        </TabsList>
+                <div className="w-full space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
+                        {plans.filter(p => p.type === 'customer').map((plan) => (
+                            <PlanCard key={plan._id} plan={plan} />
+                        ))}
                     </div>
-
-                    <TabsContent value="seller" className="focus:outline-none">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
-                            {plans.filter(p => p.type === 'seller').map((plan) => (
-                                <PlanCard key={plan._id} plan={plan} />
-                            ))}
-                        </div>
-                    </TabsContent>
-
-                    <TabsContent value="customer" className="focus:outline-none">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
-                            {plans.filter(p => p.type === 'customer').map((plan) => (
-                                <PlanCard key={plan._id} plan={plan} />
-                            ))}
-                        </div>
-                    </TabsContent>
-                </Tabs>
+                </div>
             </div>
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-2xl p-0 gap-0 overflow-hidden">
-                    <DialogHeader className="p-6 bg-gray-50 border-b border-gray-100">
+                <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col rounded-2xl p-0 gap-0 overflow-hidden">
+                    <DialogHeader className="p-6 bg-gray-50 border-b border-gray-100 shrink-0">
                         <DialogTitle className="text-xl font-bold">{currentPlan ? 'Edit Premium Plan' : 'Create New Plan'}</DialogTitle>
                         <DialogDescription className="text-gray-500">
                             {currentPlan ? 'Update the details below. Some fields are locked for security.' : 'Configure the new plan details exactly as you need.'}
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="p-6 space-y-6">
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="type" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Plan Type</Label>
-                                <Select
-                                    value={formData.type}
-                                    onValueChange={(val) => handleSelectChange('type', val)}
-                                    disabled={!!currentPlan}
-                                >
-                                    <SelectTrigger className="h-11 rounded-xl bg-gray-50 border-gray-200">
-                                        <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="seller">Seller</SelectItem>
-                                        <SelectItem value="customer">Customer</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="name" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Plan Name</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    value={formData.name}
-                                    onChange={handleInputChange}
-                                    placeholder="e.g. Gold"
-                                    disabled={!!currentPlan}
-                                    className="h-11 rounded-xl bg-gray-50 border-gray-200"
-                                />
-                            </div>
+                    <div className="p-6 space-y-6 flex-1 overflow-y-auto">
+                        <div className="space-y-2">
+                            <Label htmlFor="name" className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Plan Name</Label>
+                            <Input
+                                id="name"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleInputChange}
+                                placeholder="e.g. Gold"
+                                disabled={!!currentPlan}
+                                className="h-11 rounded-xl bg-gray-50 border-gray-200"
+                            />
                         </div>
 
                         <div className="grid grid-cols-2 gap-6">
@@ -449,7 +400,7 @@ const PremiumDelivery = () => {
                         </div>
                     </div>
 
-                    <DialogFooter className="p-6 bg-gray-50 border-t border-gray-100 gap-2">
+                    <DialogFooter className="p-6 bg-gray-50 border-t border-gray-100 gap-2 shrink-0">
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="h-11 px-6 rounded-xl border-gray-200 hover:bg-white hover:text-gray-900">Cancel</Button>
                         <Button onClick={handleSave} className="h-11 px-6 rounded-xl bg-gray-900 hover:bg-gray-800 text-white shadow-lg shadow-gray-200">Save Changes</Button>
                     </DialogFooter>

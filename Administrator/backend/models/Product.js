@@ -7,6 +7,9 @@ const productSchema = new mongoose.Schema({
     originalPrice: Number,
     sellingPrice: { type: Number, required: true },
     discount: Number,
+    // Flash Sale fields
+    activeFlashSale: { type: mongoose.Schema.Types.ObjectId, required: false },
+    flashSalePrice: { type: Number, required: false },
     quantity: Number,
     unit: String,
     minimumOrderQuantity: Number,

@@ -16,12 +16,12 @@ const LocationSchema = new mongoose.Schema({
 const ClusterSchema = new mongoose.Schema({
     cluster_id: { type: String, required: true, unique: true },
     centroid: { type: LocationSchema, required: true },
-    order_ids: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    order_ids: [{ type: String }],
     assigned_agent_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Agent', default: null },
-    route_sequence: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    route_sequence: [{ type: mongoose.Schema.Types.Mixed }], // Can contain objects like { order_id: "..." } from the python engine
     status: {
         type: String,
-        enum: ['unassigned', 'assigned', 'completed'],
+        enum: ['unassigned', 'assigned', 'completed', 'pending', 'rejected'],
         default: 'unassigned'
     }
 }, { timestamps: true });

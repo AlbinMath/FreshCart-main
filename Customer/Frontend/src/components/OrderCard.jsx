@@ -38,7 +38,7 @@ const OrderCard = ({ data }) => {
                     <span className="font-medium text-gray-800 break-words max-w-[120px] text-right text-xs">{data.items}</span>
                 </div>
 
-                {data.otp && data.status !== 'Delivered' && (
+                {data.otp && data.status?.toLowerCase() !== 'delivered' && (
                     <div className="bg-fresh-50 rounded-lg p-2 flex justify-between items-center">
                         <span className="text-xs text-fresh-700 font-medium">Delivery OTP</span>
                         <span className="text-lg font-bold text-fresh-800 tracking-wider">{data.otp}</span>

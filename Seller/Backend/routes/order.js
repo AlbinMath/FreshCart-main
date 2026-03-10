@@ -99,7 +99,7 @@ router.put('/:id/status', async (req, res) => {
 
         // Push status to IDS if ready for delivery
         try {
-            if (updatedOrder && (status === 'Processing' || status === 'Ready for Shipping' || status === 'Dispatched')) {
+            if (updatedOrder && (status === 'Processing' || status === 'Ready for Shipping' || status === 'Dispatched' || status === 'Shipped')) {
                 if (updatedOrder.shippingAddress && updatedOrder.shippingAddress.latitude) {
                     await axios.post(`${process.env.IDS_CORE_API_URL || 'http://localhost:2012'}/api/orders`, {
                         order_id: updatedOrder.orderId,
@@ -108,10 +108,20 @@ router.put('/:id/status', async (req, res) => {
                             type: 'Point',
                             coordinates: [updatedOrder.shippingAddress.longitude, updatedOrder.shippingAddress.latitude]
                         },
-                        priority: status === 'Ready for Shipping' ? 2 : 1,
+                        priority: (status === 'Ready for Shipping' || status === 'Shipped') ? 2 : 1,
                         volume: updatedOrder.items ? updatedOrder.items.reduce((sum, item) => sum + (item.quantity || 1), 0) : 1
                     });
                     console.log(`[IDS] Order ${updatedOrder.orderId} updated in Dispatch System`);
+
+                    // Trigger dispatch clustering automatically if ready for shipping or dispatched or shipped
+                    if (status === 'Ready for Shipping' || status === 'Dispatched' || status === 'Shipped') {
+                        try {
+                            const dispatchResponse = await axios.post(`${process.env.IDS_CORE_API_URL || 'http://localhost:2012'}/api/dispatch/trigger`);
+                            console.log(`[IDS] Auto-dispatch triggered. Assigned ${dispatchResponse.data?.results?.filter(r => r.assigned_to).length || 0} clusters.`);
+                        } catch (triggerErr) {
+                            console.error(`[IDS] Failed to auto-trigger dispatch clustering:`, triggerErr.message);
+                        }
+                    }
                 }
             }
         } catch (idsErr) {

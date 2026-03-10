@@ -9,7 +9,9 @@ import {
     FileText,
     LogOut,
     Bell,
-    Truck
+    Truck,
+    Store,
+    Receipt
 } from 'lucide-react';
 import NotificationDialog from './NotificationDialog';
 
@@ -17,10 +19,10 @@ const Sidebar = () => {
     const menuItems = [
         { icon: Home, label: 'Overview', path: '/dashboard/overview' },
         { icon: Users, label: 'User Management', path: '/dashboard/users' },
-
         { icon: CheckCircle, label: 'Product Approval', path: '/dashboard/product-approval' },
         { icon: ListOrdered, label: 'Order Monitoring', path: '/dashboard/orders' },
-        { icon: DollarSign, label: 'Marketing & Promotions', path: '/dashboard/marketing' }, // Reusing DollarSign for now or import Tag if available, but staying safe with existing imports
+        { icon: Receipt, label: 'Tax Management', path: '/dashboard/tax' },
+        { icon: DollarSign, label: 'Marketing & Promotions', path: '/dashboard/marketing' },
 
 
         { icon: DollarSign, label: 'Payment Requests', path: '/dashboard/payments' },

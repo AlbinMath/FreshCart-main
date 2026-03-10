@@ -83,9 +83,49 @@ export default function Profile() {
                                     <dt className="text-sm font-medium text-gray-500">Phone Number</dt>
                                     <dd className="mt-1 text-sm text-gray-900">{currentUser.phoneNumber || 'N/A'}</dd>
                                 </div>
+                                <div className="sm:col-span-2 relative mt-2 border border-gray-100 rounded-xl p-4 bg-gradient-to-br from-white to-gray-50 overflow-hidden">
+                                    <dt className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Membership Status</dt>
+                                    <dd className="mt-1">
+                                        {currentUser.activePremiumPlan ? (
+                                            <div className="flex items-center gap-4">
+                                                <div className="bg-yellow-50 p-3 rounded-full flex-shrink-0 text-yellow-600 border border-yellow-100">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" /></svg>
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                                        {currentUser.activePremiumPlan.planName} Plan
+                                                        <span className="bg-green-100 text-green-700 text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm tracking-wider">Active</span>
+                                                    </h4>
+                                                    <p className="text-sm text-gray-500 mt-0.5">
+                                                        Valid until {new Date(currentUser.activePremiumPlan.expiryDate).toLocaleDateString()}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="bg-gray-100 p-2.5 rounded-full flex-shrink-0 text-gray-500">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">Basic Plan</p>
+                                                        <p className="text-sm text-gray-500">Standard delivery rates apply.</p>
+                                                    </div>
+                                                </div>
+                                                <Link to="/premium-plans" className="text-sm font-bold text-yellow-600 hover:text-yellow-700 bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200 transition-colors">
+                                                    Upgrade
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </dd>
 
-
-
+                                    {/* Decorative background element for premium users */}
+                                    {currentUser.activePremiumPlan && (
+                                        <div className="absolute -right-6 -bottom-6 opacity-[0.03] pointer-events-none">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 24 24" fill="currentColor"><path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14" /></svg>
+                                        </div>
+                                    )}
+                                </div>
                             </dl>
                             <div className="mt-6 border-t pt-4">
                                 <Link to="/change-password" className="text-green-600 hover:text-green-500 font-medium text-sm flex items-center">
@@ -102,6 +142,37 @@ export default function Profile() {
                                 </Link>
                             </div>
                         </div>
+
+                        {/* Premium Plan History Section */}
+                        {currentUser.premiumPlansHistory && currentUser.premiumPlansHistory.length > 0 && (
+                            <div>
+                                <h3 className="text-lg font-medium text-gray-900 border-b pb-2 flex items-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-yellow-600"><path d="M12 2v20" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                                    Premium Purchase History
+                                </h3>
+                                <div className="mt-4 space-y-3">
+                                    {currentUser.premiumPlansHistory.map((plan, idx) => (
+                                        <div key={idx} className="bg-white border text-sm border-gray-100 p-4 rounded-xl shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div>
+                                                <p className="font-bold text-gray-900">{plan.planName} Plan</p>
+                                                <p className="text-gray-500 mt-1">
+                                                    Purchased: {new Date(plan.activationDate).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-col sm:items-end">
+                                                <p className="font-medium text-gray-900">₹{plan.grandTotal}</p>
+                                                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 mt-1 rounded-sm tracking-wider ${plan.status === 'active' && new Date(plan.expiryDate) > new Date()
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : 'bg-gray-100 text-gray-600'
+                                                    }`}>
+                                                    {plan.status === 'active' && new Date(plan.expiryDate) > new Date() ? 'Active' : 'Expired'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div>
                             <div className="flex justify-between items-center border-b pb-2">

@@ -13,6 +13,10 @@ export default function CheckoutPayment() {
     const [cartItems, setCartItems] = useState([]);
     const [summary, setSummary] = useState({ subtotal: 0, tax: 0, total: 0 });
     const [paymentMethod, setPaymentMethod] = useState('online'); // 'online' or 'cod'
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponError, setCouponError] = useState('');
+    const [applyingCoupon, setApplyingCoupon] = useState(false);
 
     // Address passed from previous step
     const { addressId } = location.state || {};
@@ -31,62 +35,65 @@ export default function CheckoutPayment() {
         loadData();
     }, [currentUser, addressId]);
 
+    const fetchTaxAndSetSummary = async (items, currentAppliedCoupon = null) => {
+        let subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+        let deliveryFee = 50;
+        let platformFee = 5;
+
+        const activePlan = currentUser?.activePremiumPlan;
+        if (activePlan && activePlan.status === 'active') {
+            const planName = activePlan.planName.toLowerCase();
+            if (planName === 'elite' || planName === 'premium') {
+                deliveryFee = 0;
+            } else if (planName === 'plus') {
+                deliveryFee = subtotal > 200 ? 0 : 40;
+            } else if (planName === 'lite') {
+                deliveryFee = subtotal > 500 ? 0 : 50;
+            }
+        } else {
+            if (subtotal > 1000) deliveryFee = 0;
+            else if (subtotal >= 600) deliveryFee = 10;
+        }
+
+        try {
+            const taxRes = await fetch('http://localhost:5005/api/v1/tax/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: items.map(i => ({ ...i, category: 'basic' })),
+                    deliveryFee,
+                    platformFee,
+                    orderDiscount: currentAppliedCoupon ? currentAppliedCoupon.discountApplied : 0
+                })
+            });
+            const taxData = await taxRes.json();
+            if (taxData.success) {
+                setSummary({
+                    subtotal: taxData.data.totals.subtotal,
+                    tax: taxData.data.totals.totalTax,
+                    total: taxData.data.totals.grandTotal,
+                    details: taxData.data
+                });
+            } else {
+                throw new Error("Tax calculation failed");
+            }
+        } catch (error) {
+            console.error(error);
+            const discount = currentAppliedCoupon ? currentAppliedCoupon.discountApplied : 0;
+            const tax = Math.max(0, subtotal - discount) * 0.05;
+            setSummary({ subtotal, tax, total: Math.max(0, subtotal - discount) + tax + deliveryFee + platformFee });
+        }
+    };
+
     const loadData = async () => {
         try {
             setLoading(true);
             const cartRes = await cartService.getCart(currentUser.uid);
-            let taxDetails = null;
-            let subtotal = 0;
-            let deliveryFee = 50;
-            let platformFee = 5; // Reduced platform fee
-
             if (cartRes.success && cartRes.cart) {
                 const items = cartRes.cart.items || [];
                 setCartItems(items);
-                subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-
-                // Dynamic Delivery Fee Logic
-                if (subtotal > 1000) {
-                    deliveryFee = 0;
-                } else if (subtotal >= 600) {
-                    deliveryFee = 10;
-                } else {
-                    deliveryFee = 50;
-                }
-
-                // Call Tax Service
-                try {
-                    const taxRes = await fetch('http://localhost:5005/api/v1/tax/calculate', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            items: items.map(i => ({ ...i, category: 'basic' })), // Defaulting to basic (5%) as requested
-                            deliveryFee,
-                            platformFee
-                        })
-                    });
-                    const taxData = await taxRes.json();
-
-                    if (taxData.success) {
-                        taxDetails = taxData.data;
-                        // Use values from tax service (which includes 18% delivery tax etc)
-                        setSummary({
-                            subtotal: taxDetails.totals.subtotal,
-                            tax: taxDetails.totals.totalTax,
-                            total: taxDetails.totals.grandTotal,
-                            details: taxDetails
-                        });
-                    } else {
-                        throw new Error("Tax calculation failed");
-                    }
-                } catch (taxError) {
-                    console.error("Tax service error:", taxError);
-                    // Fallback to basic calculation if service fails
-                    const tax = subtotal * 0.05;
-                    setSummary({ subtotal, tax, total: subtotal + tax + deliveryFee + platformFee });
-                }
+                await fetchTaxAndSetSummary(items, appliedCoupon);
             }
-
             const userRes = await apiService.get(`/users/${currentUser.uid}`);
             if (userRes.success && userRes.user) {
                 const addr = userRes.user.addresses.find(a => a._id === addressId);
@@ -98,6 +105,39 @@ export default function CheckoutPayment() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) return;
+        setApplyingCoupon(true);
+        setCouponError('');
+        try {
+            const firstSellerId = cartItems.length > 0 ? (cartItems[0].sellerId || cartItems[0].sellerUniqueId) : null;
+            const currentTotal = cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+            const res = await apiService.post('/marketing/validate-coupon', {
+                code: couponCode,
+                sellerId: firstSellerId,
+                currentTotal
+            });
+
+            if (res.discountApplied !== undefined) {
+                setAppliedCoupon(res);
+                setCouponCode('');
+                await fetchTaxAndSetSummary(cartItems, res);
+            } else {
+                setCouponError(res.message || 'Invalid coupon');
+            }
+        } catch (err) {
+            setCouponError(err.message || 'Failed to apply coupon');
+        } finally {
+            setApplyingCoupon(false);
+        }
+    };
+
+    const handleRemoveCoupon = async () => {
+        setAppliedCoupon(null);
+        await fetchTaxAndSetSummary(cartItems, null);
     };
 
     const loadRazorpay = () => {
@@ -120,7 +160,7 @@ export default function CheckoutPayment() {
         try {
             setLoading(true);
             const orderRes = await apiService.post('/payment/create-order', {
-                amount: summary.total,
+                amount: summary.total, // Ensure this exact total is sent and respected
                 userId: currentUser.uid
             });
 
@@ -148,7 +188,8 @@ export default function CheckoutPayment() {
                             items: cartItems,
                             totalAmount: summary.total,
                             taxDetails: summary.details, // Pass detailed tax info
-                            shippingAddress: selectedAddress
+                            shippingAddress: selectedAddress,
+                            couponCode: appliedCoupon ? appliedCoupon.code : null
                         });
 
                         if (verifyRes.success) {
@@ -187,7 +228,8 @@ export default function CheckoutPayment() {
                 items: cartItems,
                 totalAmount: summary.total,
                 taxDetails: summary.details, // Pass detailed tax info
-                shippingAddress: selectedAddress
+                shippingAddress: selectedAddress,
+                couponCode: appliedCoupon ? appliedCoupon.code : null
             });
 
             if (res.success) {
@@ -309,6 +351,44 @@ export default function CheckoutPayment() {
                             )}
                         </div>
 
+                        {/* Coupon Section */}
+                        <div className="bg-white p-6 rounded-lg shadow-md">
+                            <h2 className="text-xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+                                <span>🏷️</span> Apply Coupon
+                            </h2>
+                            {appliedCoupon ? (
+                                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex justify-between items-center">
+                                    <div>
+                                        <p className="text-sm font-semibold text-green-700">Coupon Applied!</p>
+                                        <p className="text-xs text-green-600 font-medium mt-1">
+                                            Saved {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(appliedCoupon.discountApplied)}
+                                        </p>
+                                    </div>
+                                    <button onClick={handleRemoveCoupon} className="text-red-500 hover:text-red-700 text-sm font-medium">Remove</button>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Enter coupon code"
+                                            className="flex-1 p-3 border rounded-lg focus:ring-green-500 uppercase focus:outline-none"
+                                            value={couponCode}
+                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                        />
+                                        <button
+                                            onClick={handleApplyCoupon}
+                                            disabled={applyingCoupon || !couponCode.trim()}
+                                            className="bg-green-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
+                                        >
+                                            {applyingCoupon ? 'Applying...' : 'Apply'}
+                                        </button>
+                                    </div>
+                                    {couponError && <p className="text-red-500 text-sm mt-2">{couponError}</p>}
+                                </div>
+                            )}
+                        </div>
+
                         {/* Payment Method Selection */}
                         <div className="bg-white p-6 rounded-lg shadow-md">
                             <h2 className="text-xl font-semibold mb-4 text-gray-800">Payment Method</h2>
@@ -355,6 +435,12 @@ export default function CheckoutPayment() {
                                     <span className="text-gray-600">Subtotal</span>
                                     <span className="font-medium">{new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.subtotal)}</span>
                                 </div>
+                                {appliedCoupon && summary.details && summary.details.breakdown.discountApplied > 0 && (
+                                    <div className="flex justify-between text-green-600">
+                                        <span>Discount ({appliedCoupon.code || 'Coupon'})</span>
+                                        <span className="font-medium">- {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(summary.details.breakdown.discountApplied)}</span>
+                                    </div>
+                                )}
                                 {summary.details ? (
                                     <>
                                         <div className="flex justify-between text-sm">

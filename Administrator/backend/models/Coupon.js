@@ -2,12 +2,18 @@ const mongoose = require('mongoose');
 const { productsConn } = require('../config/db');
 
 const couponSchema = new mongoose.Schema({
+    sellerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Seller',
+        required: false // If null, it's a platform-wide admin coupon
+    },
     code: {
         type: String,
         required: true,
-        unique: true,
         uppercase: true,
         trim: true
+        // Removed unique: true because different sellers might accidentally use the same code. 
+        // We will handle uniqueness based on sellerId + code later if needed.
     },
     discountType: {
         type: String,

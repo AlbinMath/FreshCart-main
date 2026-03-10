@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import Welcome from './pages/Welcome';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -17,6 +18,7 @@ import DeliveryHistory from './pages/DeliveryHistory';
 function App() {
     return (
         <div className="min-h-screen bg-background font-sans antialiased">
+            <Toaster position="top-center" />
             <LocationManager />
             <Routes>
                 <Route path="/" element={<Welcome />} />
@@ -30,7 +32,6 @@ function App() {
                     {/* Placeholder for other sidebar links to avoid 404s immediately */}
                     <Route path="my-delivery" element={<MyDelivery />} />
                     <Route path="delivery-history" element={<DeliveryHistory />} />
-                    <Route path="route-planning" element={<div className="p-4">Route Planning Page (Coming Soon)</div>} />
                     <Route path="earnings" element={<Earnings />} />
                     <Route path="tracking" element={<Tracking />} />
                     <Route path="settings" element={<Settings />} />

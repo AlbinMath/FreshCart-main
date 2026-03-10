@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X, Calendar as CalendarIcon, Clock } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const TIME_SLOTS = [
     "6:00 AM – 8:00 AM",
     "8:00 AM – 10:00 AM",
     "10:00 AM – 12:00 PM",
+    "12:00 PM – 4:00 PM",
     "4:00 PM – 6:00 PM",
     "6:00 PM – 8:00 PM"
 ];
 
-const ScheduleModal = ({ isOpen, onClose }) => {
+const ScheduleModal = ({ isOpen, onClose, onScheduleUpdate }) => {
     const [selectedDate, setSelectedDate] = useState('Today');
     const [customDate, setCustomDate] = useState('');
     const [selectedSlots, setSelectedSlots] = useState([]);
@@ -70,7 +72,7 @@ const ScheduleModal = ({ isOpen, onClose }) => {
 
     const handleSave = async () => {
         if (!currentFormattedDate) {
-            alert("Please select a valid date");
+            toast.error("Please select a valid date");
             return;
         }
 
@@ -81,11 +83,12 @@ const ScheduleModal = ({ isOpen, onClose }) => {
                 date: currentFormattedDate,
                 slots: selectedSlots
             });
-            alert('Schedule updated successfully!');
+            toast.success('Schedule updated successfully!');
+            if (onScheduleUpdate) onScheduleUpdate();
             onClose();
         } catch (error) {
             console.error("Failed to save schedule", error);
-            alert("Failed to save schedule. Please try again.");
+            toast.error("Failed to save schedule. Please try again.");
         } finally {
             setSaving(false);
         }

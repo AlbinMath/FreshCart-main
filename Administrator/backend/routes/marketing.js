@@ -57,7 +57,9 @@ router.post('/coupons', async (req, res) => {
 // Get All Coupons
 router.get('/coupons', async (req, res) => {
     try {
-        const coupons = await Coupon.find().sort({ createdAt: -1 });
+        const coupons = await Coupon.find({
+            $or: [{ sellerId: null }, { sellerId: { $exists: false } }]
+        }).sort({ createdAt: -1 });
         res.json(coupons);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -79,6 +81,34 @@ router.delete('/coupons/:id', async (req, res) => {
 // Create Flash Sale
 router.post('/flash-sales', async (req, res) => {
     try {
+        const { startTime, endTime } = req.body;
+
+        if (!startTime || !endTime) {
+            return res.status(400).json({ message: 'startTime and endTime are required.' });
+        }
+
+        const newStart = new Date(startTime);
+        const newEnd = new Date(endTime);
+
+        if (newStart >= newEnd) {
+            return res.status(400).json({ message: 'Start time must be before end time.' });
+        }
+
+        // Check for overlapping flash sales (Active or Draft that would be active)
+        const conflict = await FlashSale.findOne({
+            $or: [{ sellerId: null }, { sellerId: { $exists: false } }],
+            status: { $in: ['Active', 'Draft'] },
+            startTime: { $lt: newEnd },
+            endTime: { $gt: newStart }
+        });
+
+        if (conflict) {
+            return res.status(409).json({
+                message: `A flash sale "${conflict.title}" already runs from ${new Date(conflict.startTime).toLocaleString()} to ${new Date(conflict.endTime).toLocaleString()}. Please choose a different time window.`,
+                conflictingSale: { id: conflict._id, title: conflict.title, startTime: conflict.startTime, endTime: conflict.endTime }
+            });
+        }
+
         const flashSale = new FlashSale(req.body);
         await flashSale.save();
         res.status(201).json(flashSale);
@@ -90,8 +120,9 @@ router.post('/flash-sales', async (req, res) => {
 // Get All Flash Sales
 router.get('/flash-sales', async (req, res) => {
     try {
-        const flashSales = await FlashSale.find()
-            .sort({ createdAt: -1 });
+        const flashSales = await FlashSale.find({
+            $or: [{ sellerId: null }, { sellerId: { $exists: false } }]
+        }).sort({ createdAt: -1 });
         res.json(flashSales);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -108,40 +139,83 @@ router.delete('/flash-sales/:id', async (req, res) => {
     }
 });
 
-
-// --- Bundles ---
-
-// Create Bundle
-router.post('/bundles', async (req, res) => {
+// Patch Flash Sale Status (manual override)
+router.patch('/flash-sales/:id/status', async (req, res) => {
     try {
-        const bundle = new Bundle(req.body);
-        await bundle.save();
-        res.status(201).json(bundle);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-});
-
-// Get All Bundles
-router.get('/bundles', async (req, res) => {
-    try {
-        const bundles = await Bundle.find()
-            .populate('products.productId', 'name images price')
-            .sort({ createdAt: -1 });
-        res.json(bundles);
+        const { status } = req.body;
+        const updated = await FlashSale.findByIdAndUpdate(
+            req.params.id,
+            { status },
+            { new: true }
+        );
+        if (!updated) return res.status(404).json({ message: 'Flash Sale not found' });
+        res.json(updated);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 });
 
-// Delete Bundle
-router.delete('/bundles/:id', async (req, res) => {
+// Auto-update flash sale statuses based on current time
+async function autoUpdateFlashSaleStatuses() {
     try {
-        await Bundle.findByIdAndDelete(req.params.id);
-        res.json({ message: 'Bundle deleted' });
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+        const now = new Date();
+
+        // Draft → Active: startTime has passed, endTime hasn't, autoActivate is true
+        await FlashSale.updateMany(
+            {
+                status: 'Draft',
+                autoActivate: true,
+                startTime: { $lte: now },
+                endTime: { $gt: now }
+            },
+            { $set: { status: 'Active' } }
+        );
+
+        // Find sales that are about to be marked Ended (still Active/Draft but expired)
+        // We need their IDs BEFORE marking them ended, to clear product fields
+        const expiredSales = await FlashSale.find(
+            {
+                status: { $in: ['Active', 'Draft'] },
+                autoExpire: true,
+                endTime: { $lte: now }
+            },
+            { _id: 1 }
+        );
+
+        if (expiredSales.length > 0) {
+            const expiredIds = expiredSales.map(s => s._id);
+
+            // Mark the sales as Ended
+            await FlashSale.updateMany(
+                { _id: { $in: expiredIds } },
+                { $set: { status: 'Ended' } }
+            );
+
+            // Clear activeFlashSale and flashSalePrice from all products enrolled in ended sales
+            const updateResult = await Product.updateMany(
+                { activeFlashSale: { $in: expiredIds } },
+                { $unset: { activeFlashSale: '', flashSalePrice: '' } }
+            );
+
+            if (updateResult.modifiedCount > 0) {
+                console.log(`[Flash Sale Scheduler] Cleared flash sale pricing from ${updateResult.modifiedCount} product(s) for ${expiredIds.length} ended sale(s).`);
+            }
+        }
+
+        // Also handle any remaining active/draft that expired but weren't caught above
+        await FlashSale.updateMany(
+            {
+                status: { $in: ['Active', 'Draft'] },
+                autoExpire: true,
+                endTime: { $lte: now }
+            },
+            { $set: { status: 'Ended' } }
+        );
+
+    } catch (err) {
+        console.error('[Flash Sale Scheduler] Error updating statuses:', err.message);
     }
-});
+}
 
 module.exports = router;
+module.exports.autoUpdateFlashSaleStatuses = autoUpdateFlashSaleStatuses;

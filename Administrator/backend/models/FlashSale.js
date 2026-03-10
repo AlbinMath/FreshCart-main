@@ -3,6 +3,11 @@ const { productsConn } = require('../config/db');
 
 const flashSaleSchema = new mongoose.Schema({
     // --- Basic Details ---
+    sellerId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Seller',
+        required: false // If null, it's a platform-wide admin flash sale
+    },
     title: {
         type: String,
         required: true,

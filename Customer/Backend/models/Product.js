@@ -8,6 +8,9 @@ const productSchema = new mongoose.Schema({
     originalPrice: { type: Number },
     sellingPrice: { type: Number, required: true },
     discount: { type: Number },
+    // Flash Sale fields — needed to query and display flash sale prices
+    activeFlashSale: { type: mongoose.Schema.Types.ObjectId, ref: 'FlashSale', required: false },
+    flashSalePrice: { type: Number, required: false },
     quantity: { type: Number },
     unit: { type: String },
     minimumOrderQuantity: { type: Number },

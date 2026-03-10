@@ -9,7 +9,8 @@ import {
     FileText,
     Settings,
     Bell,
-    LogOut
+    LogOut,
+    Megaphone
 } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { cn } from '@/ui/utils';
@@ -69,6 +70,7 @@ const Sidebar = ({ className }) => {
             badge: pendingOrdersCount > 0 ? pendingOrdersCount : null,
             badgeColor: 'bg-red-500'
         },
+        { icon: Megaphone, label: 'Marketing', path: '/marketing' },
         { icon: FileText, label: 'Reports', path: '/reports' },
         { icon: Settings, label: 'Store Settings', path: '/settings' },
     ];

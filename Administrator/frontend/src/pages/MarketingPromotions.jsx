@@ -13,7 +13,6 @@ const MarketingPromotions = () => {
                     <p className="text-gray-500 mt-1">Manage coupons, flash sales, and product bundles</p>
                 </div>
 
-                {/* Tabs */}
                 <div className="flex p-1 bg-gray-100 rounded-lg">
                     <button
                         onClick={() => setActiveTab('coupons')}
@@ -35,23 +34,12 @@ const MarketingPromotions = () => {
                         <Clock size={18} />
                         Flash Sales
                     </button>
-                    <button
-                        onClick={() => setActiveTab('bundles')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'bundles'
-                            ? 'bg-white text-green-700 shadow-sm'
-                            : 'text-gray-600 hover:text-gray-900'
-                            }`}
-                    >
-                        <Package size={18} />
-                        Bundles
-                    </button>
                 </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 min-h-[500px]">
                 {activeTab === 'coupons' && <CouponsTab />}
                 {activeTab === 'flash-sales' && <FlashSalesTab />}
-                {activeTab === 'bundles' && <BundlesTab />}
             </div>
         </div>
     );
@@ -367,9 +355,30 @@ const FlashSalesTab = () => {
         auditLog: true
     });
 
+    // Helper: compute effective status from times (client-side fallback)
+    const getEffectiveStatus = (sale) => {
+        const now = new Date();
+        const start = new Date(sale.startTime);
+        const end = new Date(sale.endTime);
+        if (sale.status === 'Ended' || now >= end) return 'Ended';
+        if ((sale.status === 'Active') || (sale.status === 'Draft' && now >= start && now < end)) return 'Active';
+        return sale.status; // Draft or Paused
+    };
+
+    const getStatusBadge = (sale) => {
+        const status = getEffectiveStatus(sale);
+        if (status === 'Active') return { label: '🟢 Live', cls: 'bg-green-500 text-white' };
+        if (status === 'Ended') return { label: '🔴 Ended', cls: 'bg-red-500 text-white' };
+        if (status === 'Paused') return { label: '⏸ Paused', cls: 'bg-yellow-500 text-white' };
+        return { label: '📝 Draft', cls: 'bg-gray-500 text-white' };
+    };
+
     useEffect(() => {
         fetchFlashSales();
         fetchProducts();
+        // Poll every 30 seconds to keep statuses fresh
+        const interval = setInterval(fetchFlashSales, 30 * 1000);
+        return () => clearInterval(interval);
     }, []);
 
     const fetchFlashSales = async () => {
@@ -408,14 +417,23 @@ const FlashSalesTab = () => {
             if (res.ok) {
                 setShowForm(false);
                 fetchFlashSales();
+                toast.success('Flash Sale created successfully!');
                 setFormData({
                     title: '', description: '', bannerImage: '', status: 'Draft',
                     startTime: '', endTime: '', timezone: 'IST', autoActivate: true, autoExpire: true,
                     salesTarget: '', saleTag: '', approvalRequired: false, editLock: false, auditLog: true
                 });
+            } else {
+                const errData = await res.json();
+                if (res.status === 409) {
+                    toast.error(`⚠️ Time Conflict: ${errData.message}`, { duration: 6000 });
+                } else {
+                    toast.error(errData.message || 'Failed to create flash sale');
+                }
             }
         } catch (error) {
             console.error(error);
+            toast.error('Network error. Please try again.');
         }
     };
     const handleDelete = async (id) => {
@@ -638,43 +656,49 @@ const FlashSalesTab = () => {
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {flashSales.map(sale => (
-                    <div key={sale._id} className="border rounded-xl p-4 relative overflow-hidden bg-white hover:shadow-md transition-shadow group">
-                        <div className={`absolute top-0 right-0 text-white text-xs px-2 py-1 rounded-bl-lg font-bold ${sale.status === 'Active' ? 'bg-green-500' : 'bg-gray-500'
-                            }`}>
-                            {sale.status}
-                        </div>
-                        <div className="flex gap-4 items-start mb-3">
-                            <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border">
-                                {sale.bannerImage ? (
-                                    <img src={sale.bannerImage} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs text-center p-1">No Banner</div>
-                                )}
-                            </div>
-                            <div className="flex-1">
-                                <h3 className="font-semibold line-clamp-1">{sale.title}</h3>
-                                <p className="text-xs text-gray-500 line-clamp-2 mb-1">{sale.description}</p>
-                            </div>
+                    <div key={sale._id} className="border rounded-xl overflow-hidden bg-white hover:shadow-md transition-shadow group">
+                        {/* Banner Image */}
+                        <div className="relative h-36 w-full overflow-hidden">
+                            {sale.bannerImage ? (
+                                <img src={sale.bannerImage} alt={sale.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                            ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center">
+                                    <span className="text-white text-4xl opacity-20">⚡</span>
+                                </div>
+                            )}
+                            {/* Status badge overlay */}
+                            {(() => {
+                                const { label, cls } = getStatusBadge(sale); return (
+                                    <div className={`absolute top-2 right-2 text-xs px-2 py-1 rounded-full font-bold shadow ${cls}`}>
+                                        {label}
+                                    </div>
+                                );
+                            })()}
                         </div>
 
-                        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded space-y-1">
-                            <div className="flex justify-between">
-                                <span>Starts: {new Date(sale.startTime).toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between">
-                                <span>Ends: {new Date(sale.endTime).toLocaleString()}</span>
-                            </div>
-                            <div className="pt-2 border-t flex justify-between items-center mt-2">
-                                <span className="text-xs bg-gray-200 px-1 rounded">{sale.saleType}</span>
-                                {confirmDeleteId === sale._id ? (
-                                    <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
-                                        <span className="text-xs text-red-700 font-medium">Delete?</span>
-                                        <button onClick={() => handleDelete(sale._id)} className="text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 font-semibold">Yes</button>
-                                        <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded hover:bg-gray-300">No</button>
-                                    </div>
-                                ) : (
-                                    <button onClick={() => setConfirmDeleteId(sale._id)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"><Trash2 size={14} /></button>
-                                )}
+                        <div className="p-4">
+                            <h3 className="font-semibold line-clamp-1 mb-0.5">{sale.title}</h3>
+                            <p className="text-xs text-gray-500 line-clamp-2 mb-3">{sale.description}</p>
+
+                            <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded space-y-1">
+                                <div className="flex justify-between">
+                                    <span>Starts: {new Date(sale.startTime).toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Ends: {new Date(sale.endTime).toLocaleString()}</span>
+                                </div>
+                                <div className="pt-2 border-t flex justify-between items-center mt-2">
+                                    <span className="text-xs bg-gray-200 px-1 rounded">{sale.saleTag || sale.saleType || ''}</span>
+                                    {confirmDeleteId === sale._id ? (
+                                        <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
+                                            <span className="text-xs text-red-700 font-medium">Delete?</span>
+                                            <button onClick={() => handleDelete(sale._id)} className="text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 font-semibold">Yes</button>
+                                            <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded hover:bg-gray-300">No</button>
+                                        </div>
+                                    ) : (
+                                        <button onClick={() => setConfirmDeleteId(sale._id)} className="text-red-500 hover:bg-red-50 p-1 rounded transition-colors"><Trash2 size={14} /></button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -682,250 +706,6 @@ const FlashSalesTab = () => {
                 {flashSales.length === 0 && (
                     <div className="col-span-full py-12 text-center text-gray-500">
                         No active flash sales.
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
-// --- BUNDLES TAB ---
-const BundlesTab = () => {
-    const [bundles, setBundles] = useState([]);
-    const [products, setProducts] = useState([]);
-    const [showForm, setShowForm] = useState(false);
-    const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-    const [selectedProducts, setSelectedProducts] = useState([{ productId: '', quantity: 1 }]);
-    const [formData, setFormData] = useState({
-        name: '',
-        bundlePrice: '',
-        description: ''
-    });
-    useEffect(() => {
-        fetchBundles();
-        fetchProducts();
-    }, []);
-    const fetchBundles = async () => {
-        try {
-            const res = await fetch('http://localhost:5003/api/marketing/bundles');
-            const data = await res.json();
-            setBundles(data);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-    const fetchProducts = async () => {
-        try {
-            const res = await fetch('http://localhost:5003/api/products');
-            const data = await res.json();
-            setProducts(data);
-        } catch (error) {
-            console.error(error);
-        }
-    };
-    const addProductRow = () => {
-        setSelectedProducts([...selectedProducts, { productId: '', quantity: 1 }]);
-    };
-
-    const removeProductRow = (index) => {
-        const newProducts = [...selectedProducts];
-        newProducts.splice(index, 1);
-        setSelectedProducts(newProducts);
-    };
-    const updateProductRow = (index, field, value) => {
-        const newProducts = [...selectedProducts];
-        newProducts[index][field] = value;
-        setSelectedProducts(newProducts);
-    };
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        // Filter out empty rows
-        const validProducts = selectedProducts.filter(p => p.productId);
-        if (validProducts.length < 2) {
-            toast.error('Please select at least 2 products for a bundle');
-            return;
-        }
-        try {
-            const payload = { ...formData, products: validProducts };
-            const res = await fetch('http://localhost:5003/api/marketing/bundles', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (res.ok) {
-                setShowForm(false);
-                fetchBundles();
-                setFormData({ name: '', bundlePrice: '', description: '' });
-                setSelectedProducts([{ productId: '', quantity: 1 }]);
-            }
-        } catch (error) {
-            console.error(error);
-        }
-    };
-    const handleDelete = async (id) => {
-        try {
-            await fetch(`http://localhost:5003/api/marketing/bundles/${id}`, { method: 'DELETE' });
-            fetchBundles();
-            toast.success('Bundle deleted!');
-        } catch (error) {
-            console.error(error);
-            toast.error('Failed to delete bundle');
-        } finally {
-            setConfirmDeleteId(null);
-        }
-    };
-    return (
-        <div className="p-6">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-lg font-semibold">Product Bundles</h2>
-                <button
-                    onClick={() => setShowForm(!showForm)}
-                    className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                    <Plus size={18} />
-                    Create Bundle
-                </button>
-            </div>
-            {showForm && (
-                <div className="mb-8 bg-purple-50 p-6 rounded-lg border border-purple-100">
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Bundle Name</label>
-                            <input
-                                type="text"
-                                placeholder="e.g. Veggie Start Pack"
-                                className="w-full p-2 border rounded-lg"
-                                value={formData.name}
-                                onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                required
-                            />
-                        </div>
-                        <div className="bg-white p-4 rounded-lg border border-purple-200">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Bundle Items</label>
-                            {selectedProducts.map((row, index) => (
-                                <div key={index} className="flex gap-2 mb-2">
-                                    <select
-                                        className="flex-1 p-2 border rounded-lg text-sm"
-                                        value={row.productId}
-                                        onChange={e => updateProductRow(index, 'productId', e.target.value)}
-                                        required
-                                    >
-                                        <option value="">Select Product...</option>
-                                        {products.map(p => (
-                                            <option key={p._id} value={p._id}>{p.name}</option>
-                                        ))}
-                                    </select>
-                                    <input
-                                        type="number"
-                                        className="w-20 p-2 border rounded-lg text-sm"
-                                        placeholder="Qty"
-                                        min="1"
-                                        value={row.quantity}
-                                        onChange={e => updateProductRow(index, 'quantity', e.target.value)}
-                                        required
-                                    />
-                                    {selectedProducts.length > 1 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => removeProductRow(index)}
-                                            className="text-red-500 hover:bg-red-50 p-2 rounded"
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
-                            <button
-                                type="button"
-                                onClick={addProductRow}
-                                className="text-sm text-purple-600 font-medium hover:underline mt-1"
-                            >
-                                + Add another item
-                            </button>
-                        </div>
-                        <div className="flex gap-4">
-                            <div className="flex-1">
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Total Bundle Price (₹)</label>
-                                <input
-                                    type="number"
-                                    className="w-full p-2 border rounded-lg"
-                                    value={formData.bundlePrice}
-                                    onChange={e => setFormData({ ...formData, bundlePrice: e.target.value })}
-                                    required
-                                />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <textarea
-                                className="w-full p-2 border rounded-lg"
-                                rows="2"
-                                value={formData.description}
-                                onChange={e => setFormData({ ...formData, description: e.target.value })}
-                            ></textarea>
-                        </div>
-                        <div className="flex justify-end gap-3 mt-4">
-                            <button
-                                type="button"
-                                onClick={() => setShowForm(false)}
-                                className="px-4 py-2 text-gray-600"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700"
-                            >
-                                Create Bundle
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {bundles.map(bundle => (
-                    <div key={bundle._id} className="border rounded-xl p-5 hover:shadow-md transition-shadow bg-white">
-                        <div className="flex justify-between items-start mb-4">
-                            <div>
-                                <h3 className="font-bold text-lg text-gray-900">{bundle.name}</h3>
-                                <p className="text-sm text-gray-500">{bundle.description}</p>
-                            </div>
-                            <span className="bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded-lg">
-                                ₹{bundle.bundlePrice}
-                            </span>
-                        </div>
-
-                        <div className="space-y-2 mb-4">
-                            {bundle.products.map((item, i) => (
-                                <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
-                                    <span className="w-5 h-5 bg-gray-100 flex items-center justify-center rounded-full text-xs font-bold">
-                                        {item.quantity}
-                                    </span>
-                                    <span>×</span>
-                                    <span>{item.productId?.name || 'Unknown Product'}</span>
-                                </div>
-                            ))}
-                        </div>
-                        <div className="pt-4 border-t flex justify-between items-center text-sm text-gray-500">
-                            <span>Created: {new Date(bundle.createdAt).toLocaleDateString()}</span>
-                            {confirmDeleteId === bundle._id ? (
-                                <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-2 py-1">
-                                    <span className="text-xs text-red-700 font-medium">Delete?</span>
-                                    <button onClick={() => handleDelete(bundle._id)} className="text-xs bg-red-500 text-white px-2 py-0.5 rounded hover:bg-red-600 font-semibold">Yes</button>
-                                    <button onClick={() => setConfirmDeleteId(null)} className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded hover:bg-gray-300">No</button>
-                                </div>
-                            ) : (
-                                <button onClick={() => setConfirmDeleteId(bundle._id)} className="text-red-500 hover:text-red-700 flex items-center gap-1">
-                                    <Trash2 size={14} /> Remove
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                ))}
-                {bundles.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-gray-500">
-                        No bundles created yet.
                     </div>
                 )}
             </div>

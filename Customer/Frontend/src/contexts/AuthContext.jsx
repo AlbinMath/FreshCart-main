@@ -63,9 +63,25 @@ export function AuthProvider({ children }) {
                 try {
                     // Fetch user details from backend
                     const response = await apiService.get(`/users/${user.uid}`);
+                    let backendUser = response.user || {};
+
+                    // Fetch active premium plans for user
+                    try {
+                        const plans = await apiService.get(`/public/premium-plans/my-plans/${user.uid}`);
+                        backendUser.premiumPlansHistory = plans; // Store all history locally
+
+                        // Find the first active plan
+                        const activePlan = plans.find(p => p.status === 'active' && new Date(p.expiryDate) > new Date());
+                        if (activePlan) {
+                            backendUser.activePremiumPlan = activePlan;
+                        }
+                    } catch (planError) {
+                        console.error("Error fetching premium plans for user:", planError);
+                    }
+
                     if (response.success && response.user) {
-                        // Merge Firebase user with Backend user data
-                        setCurrentUser({ ...user, ...response.user });
+                        // Merge Firebase user with Backend user data and premium plan
+                        setCurrentUser({ ...user, ...backendUser });
                     } else {
                         setCurrentUser(user);
                     }

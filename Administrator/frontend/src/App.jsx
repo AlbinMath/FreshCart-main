@@ -11,6 +11,9 @@ import Reports from './pages/Reports';
 import MarketingPromotions from './pages/MarketingPromotions';
 import PremiumDelivery from './pages/PremiumDelivery';
 import SplashScreen from './pages/SplashScreen';
+import Sellers from './pages/Sellers';
+import Customers from './pages/Customers';
+import TaxManagement from './pages/TaxManagement';
 
 import ProtectedRoute from './components/ProtectedRoute';
 import { Toaster } from 'react-hot-toast';
@@ -50,6 +53,11 @@ function App() {
                         <Route path="reports" element={<Reports />} />
                         <Route path="marketing" element={<MarketingPromotions />} />
                         <Route path="premium-delivery" element={<PremiumDelivery />} />
+
+                        {/* New Sections */}
+                        <Route path="sellers" element={<Sellers />} />
+                        <Route path="customers" element={<Customers />} />
+                        <Route path="tax" element={<TaxManagement />} />
 
                         {/* Add other routes here */}
                     </Route>

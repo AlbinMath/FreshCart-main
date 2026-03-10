@@ -29,6 +29,16 @@ const productSchema = new mongoose.Schema({
         type: Number, // Percentage
         default: 0
     },
+    // Flash Sale Tagging
+    activeFlashSale: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'FlashSale',
+        required: false
+    },
+    flashSalePrice: {
+        type: Number,
+        required: false
+    },
 
     // Quantity & Unit Specs
     quantity: {

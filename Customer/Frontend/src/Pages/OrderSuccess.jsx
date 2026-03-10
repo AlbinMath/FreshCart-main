@@ -203,6 +203,14 @@ export default function OrderSuccess() {
             if (order.taxDetails && order.taxDetails.breakdown) {
                 const taxDetails = order.taxDetails;
 
+                if (taxDetails.breakdown.discountApplied !== undefined && taxDetails.breakdown.discountApplied > 0) {
+                    doc.setTextColor(22, 163, 74); // Green color for discount
+                    doc.text("Discount (Coupon):", summaryX, currentY);
+                    doc.text("- " + new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(taxDetails.breakdown.discountApplied), valX, currentY, { align: 'right' });
+                    doc.setTextColor(0, 0, 0); // Reset color
+                    currentY += 6;
+                }
+
                 // Delivery Fee
                 if (taxDetails.breakdown.delivery && taxDetails.breakdown.delivery.value > 0) {
                     doc.text("Delivery Fee:", summaryX, currentY);
@@ -294,7 +302,7 @@ export default function OrderSuccess() {
 
                     {/* Success Header */}
                     <div className="text-center mb-8">
-                        {order.status === 'Cancelled' ? (
+                        {order.status?.toLowerCase() === 'cancelled' ? (
                             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -307,8 +315,8 @@ export default function OrderSuccess() {
                                 </svg>
                             </div>
                         )}
-                        <h1 className={`text-2xl font-bold mb-2 ${order.status === 'Cancelled' ? 'text-red-700' : 'text-gray-800'}`}>
-                            {order.status === 'Cancelled' ? 'Order Cancelled' : 'Order Placed Successfully!'}
+                        <h1 className={`text-2xl font-bold mb-2 ${order.status?.toLowerCase() === 'cancelled' ? 'text-red-700' : 'text-gray-800'}`}>
+                            {order.status?.toLowerCase() === 'cancelled' ? 'Order Cancelled' : 'Order Placed Successfully!'}
                         </h1>
                         <p className="text-gray-600">
                             Order ID: <span className="font-mono font-bold text-gray-800">{order.orderId || order.razorpayOrderId || order._id.slice(-6).toUpperCase()}</span>
@@ -347,8 +355,8 @@ export default function OrderSuccess() {
                                 </div>
                                 <div className="flex justify-between">
                                     <span>Order Status:</span>
-                                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${order.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                                        order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
+                                    <span className={`px-2 py-0.5 rounded text-xs font-semibold ${order.status?.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                        order.status?.toLowerCase() === 'delivered' ? 'bg-green-100 text-green-800' :
                                             'bg-blue-100 text-blue-800'
                                         }`}>
                                         {order.status}
@@ -363,7 +371,7 @@ export default function OrderSuccess() {
                     </div>
 
                     {/* Delivery OTP Section */}
-                    {order.deliveryOtp && order.status !== 'Delivered' && (
+                    {order.deliveryOtp && order.status?.toLowerCase() !== 'delivered' && (
                         <div className="mb-8 bg-green-50 border border-green-200 p-6 rounded-lg text-center">
                             <h2 className="text-xl font-bold text-green-800 mb-2">Delivery OTP</h2>
                             <p className="text-gray-600 mb-2">Share this OTP with the delivery agent only upon receiving your order.</p>
@@ -376,7 +384,7 @@ export default function OrderSuccess() {
                     {/* Order Items */}
                     <div className="mb-8">
                         {/* ✅ Estimated Delivery Time */}
-                        {order.status !== 'Cancelled' && order.status !== 'Delivered' && (
+                        {order.status?.toLowerCase() !== 'cancelled' && order.status?.toLowerCase() !== 'delivered' && (
                             <div className="mb-6 bg-white border border-gray-100 rounded-xl p-5 shadow-sm">
                                 <h2 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                                     <span>🕓</span> Estimated Delivery Time
@@ -424,6 +432,12 @@ export default function OrderSuccess() {
 
                             {order.taxDetails && order.taxDetails.breakdown ? (
                                 <>
+                                    {order.taxDetails.breakdown.discountApplied !== undefined && order.taxDetails.breakdown.discountApplied > 0 && (
+                                        <div className="w-full md:w-1/3 flex justify-between text-green-600 font-medium">
+                                            <span>Discount (Coupon):</span>
+                                            <span>- {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.taxDetails.breakdown.discountApplied)}</span>
+                                        </div>
+                                    )}
                                     {order.taxDetails.breakdown.delivery && order.taxDetails.breakdown.delivery.value > 0 && (
                                         <div className="w-full md:w-1/3 flex justify-between">
                                             <span>Delivery Fee:</span>
@@ -495,7 +509,7 @@ export default function OrderSuccess() {
                             </button>
                         )}
 
-                        {order.status === 'Delivered' && (
+                        {order.status?.toLowerCase() === 'delivered' && (
                             <Link
                                 to={`/rate-order/${orderId}`}
                                 className="block w-full bg-yellow-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-yellow-600 transition text-center flex items-center justify-center gap-2"

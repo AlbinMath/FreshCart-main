@@ -12,6 +12,7 @@ import ProductCatalog from './page/products/ProductCatalog';
 import AddProduct from './page/products/AddProduct';
 import DashboardLayout from './layout/DashboardLayout';
 import StoreOverview from './page/Storeoverview';
+import Marketing from './page/Marketing';
 import UpdatePassword from './page/UpdatePassword';
 import Reports from './page/Reports';
 import Orders from './page/Orders';
@@ -42,10 +43,10 @@ function App() {
                     <Route path="settings" element={<Settings />} />
                     <Route path="update-password" element={<UpdatePassword />} />
 
-                    {/* Product Management */}
                     <Route path="/products" element={<ProductCatalog />} />
                     <Route path="/products/add" element={<AddProduct />} />
                     <Route path="/products/edit/:id" element={<AddProduct />} />
+                    <Route path="/marketing" element={<Marketing />} />
 
                     <Route path="/orders" element={<Orders />} />
                     <Route path="/reports" element={<Reports />} />

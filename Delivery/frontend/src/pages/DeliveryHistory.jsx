@@ -45,7 +45,7 @@ const DeliveryHistory = () => {
     };
 
     const filteredHistory = history.filter(order =>
-        order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order._id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (order.shippingAddress?.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -101,7 +101,7 @@ const DeliveryHistory = () => {
                                     </div>
                                     <div>
                                         <div className="font-bold text-gray-800 flex items-center gap-2">
-                                            Order #{order._id.substring(0, 8)}...
+                                            Order #{order._id ? order._id.substring(0, 8) : 'N/A'}...
                                             <span className="text-xs font-normal text-gray-400 px-2 py-0.5 bg-gray-100 rounded-full">Delivered</span>
                                         </div>
                                         <div className="text-sm text-gray-500 mt-1 flex items-center gap-2">

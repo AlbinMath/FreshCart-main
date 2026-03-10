@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 const DeliveryAgent = require('../models/DeliveryAgent');
 const Schedule = require('../models/Schedule');
 const Seller = require('../models/Seller');
@@ -10,6 +11,7 @@ const User = require('../models/User');
 const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Review = require('../models/Review');
+const IDSCluster = require('../models/IDSCluster');
 
 const router = express.Router();
 
@@ -55,51 +57,35 @@ router.post('/nearest-shop-order', async (req, res) => {
             return res.json({ message: 'No active orders found in your ML cluster queue' });
         }
 
-        // 2. Extract the sequenced order IDs from the first active cluster
+        // 2. Extract the cluster to offer the agent
         const targetCluster = idsClusters[0];
         if (!targetCluster.route_sequence || targetCluster.route_sequence.length === 0) {
             return res.json({ message: 'No active orders found in your ML cluster queue' });
         }
 
+        // Ensure these orders are still pending/unassigned in DB to be absolutely safe
         const sequencedOrderStringIds = targetCluster.route_sequence.map(o => o.order_id);
+        const validOrders = await Order.find({
+            orderId: { $in: sequencedOrderStringIds },
+            status: { $in: ['Shipped', 'Ready for Shipping', 'Dispatched'] },
+            deliveryAgentId: { $exists: false }
+        });
 
-        // 3. Find the first unassigned order in the database that matches the ML sequence
-        let nextOrderToAssign = null;
-        let sellerInfo = null;
-
-        for (let targetOrderId of sequencedOrderStringIds) {
-            const potentialOrder = await Order.findOne({
-                orderId: targetOrderId,
-                status: 'Shipped', // Only orders ready for pickup
-                deliveryAgentId: { $exists: false },
-                rejectedAgentIds: { $ne: agentId }
-            });
-
-            if (potentialOrder) {
-                // Fetch the seller for store info
-                const sellerId = potentialOrder.sellerId || (potentialOrder.items && potentialOrder.items.length > 0 && potentialOrder.items[0].sellerId);
-                sellerInfo = await Seller.findById(sellerId);
-
-                if (sellerInfo) {
-                    // Compute distance (for display purposes in the app)
-                    const dist = calculateDistance(latitude, longitude, sellerInfo.latitude || 0, sellerInfo.longitude || 0);
-                    nextOrderToAssign = {
-                        ...potentialOrder.toObject(),
-                        shopName: sellerInfo.storeName || sellerInfo.sellerName,
-                        shopAddress: sellerInfo.storeAddress,
-                        distance: dist.toFixed(2) // km
-                    };
-                    break; // Stop at the very first valid order in the route sequence
-                }
-            }
+        if (validOrders.length === 0) {
+            return res.json({ message: 'No active valid orders found in your ML cluster queue' });
         }
 
-        if (nextOrderToAssign) {
-            res.json(nextOrderToAssign);
-        } else {
-            // If the entire cluster is assigned/picked up, the ML queue is empty for them
-            res.json({ message: 'No active orders found in your ML cluster queue' });
-        }
+        // Distances can be calculated to centroid if available, or just say Optimized
+        res.json({
+            isCluster: true,
+            clusterId: targetCluster.cluster_id,
+            _id: targetCluster.cluster_id, // For UI compatibility
+            shopName: `Smart Route (${validOrders.length} Drops)`,
+            shopAddress: 'Multiple Locations',
+            distance: 'Optimized',
+            items: validOrders,
+            orderCount: validOrders.length
+        });
 
     } catch (err) {
         console.error("Error finding nearest IDS cluster order:", err);
@@ -111,16 +97,6 @@ router.post('/nearest-shop-order', async (req, res) => {
 router.put('/accept-order', async (req, res) => {
     try {
         const { orderId, agentId } = req.body;
-
-        // Check active order count
-        const activeCount = await Order.countDocuments({
-            deliveryAgentId: agentId,
-            status: 'Out for Delivery'
-        });
-
-        if (activeCount >= 5) {
-            return res.status(400).json({ message: 'Maximum active order limit (5) reached. Please complete current deliveries.' });
-        }
 
         // Atomically update to ensure no double booking
         const order = await Order.findOneAndUpdate(
@@ -168,22 +144,158 @@ router.put('/reject-order', async (req, res) => {
     }
 });
 
-// Get Current Active Delivery for Agent (Multiple)
-router.get('/current-delivery/:agentId', async (req, res) => {
+// Accept Cluster
+router.put('/accept-cluster', async (req, res) => {
     try {
-        // Find ALL active orders for this agent
-        const orders = await Order.find({
-            deliveryAgentId: req.params.agentId,
-            status: 'Out for Delivery'
+        const { clusterId, agentId } = req.body;
+
+        const IDS_CORE_API_URL = process.env.IDS_CORE_API_URL || 'http://localhost:2012';
+
+        // 1. Get the cluster from IDS
+        const clusterRes = await axios.get(`${IDS_CORE_API_URL}/api/agents/${agentId}/assigned-cluster`);
+        const clusters = clusterRes.data || [];
+        const targetCluster = clusters.find(c => c.cluster_id === clusterId);
+
+        if (!targetCluster) {
+            return res.status(404).json({ message: 'Cluster not found or not assigned to you' });
+        }
+
+        const sequencedOrderStringIds = targetCluster.route_sequence;
+
+        // Convert the string IDs to ObjectIds because they are matched against `_id` in the Products DB.
+        const mongoose = require('mongoose');
+        const sequencedObjectIds = sequencedOrderStringIds.map(id => new mongoose.Types.ObjectId(id));
+
+        // 2. Fetch the orders locally
+        const validOrders = await Order.find({
+            $or: [
+                { _id: { $in: sequencedObjectIds } },
+                { orderId: { $in: sequencedOrderStringIds } }
+            ],
+            deliveryAgentId: { $exists: false }
         });
 
-        if (orders && orders.length > 0) {
-            const ordersWithDetails = await populateOrderDetails(orders);
-            res.json(ordersWithDetails);
-        } else {
-            res.json([]);
+        if (validOrders.length === 0) {
+            return res.status(400).json({ message: 'No valid unassigned orders found in this cluster.' });
         }
+
+        const validOrderIds = validOrders.map(o => o._id);
+        const validOrderStringIds = validOrders.map(o => o.orderId).filter(id => id);
+
+        // 3. Atomically assign all found orders
+        await Order.updateMany(
+            { $or: [{ _id: { $in: validOrderIds } }, { orderId: { $in: validOrderStringIds } }] },
+            {
+                $set: {
+                    status: 'Out for Delivery',
+                    deliveryAgentId: agentId,
+                    assignedAt: new Date()
+                }
+            }
+        );
+
+        // 4. Update order statuses in IDS
+        for (let order of validOrders) {
+            try {
+                await axios.put(`${IDS_CORE_API_URL}/api/orders/${order.orderId}/status`, { status: 'in_transit' });
+            } catch (e) {
+                console.error('[IDS Sync] Error updating order status for', order.orderId);
+            }
+        }
+
+        // Update cluster status to indicate it's been active/accepted is generally good practice
+        // but not strictly required unless Python engine tracks "accepted" vs "assigned"
+
+        res.json({ message: `Successfully accepted cluster with ${validOrders.length} orders` });
+
     } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Reject Cluster
+router.put('/reject-cluster', async (req, res) => {
+    try {
+        const { clusterId, agentId } = req.body;
+
+        const IDS_CORE_API_URL = process.env.IDS_CORE_API_URL || 'http://localhost:2012';
+
+        // 1. Reset cluster on IDS so it can be re-assigned
+        try {
+            await axios.put(`${IDS_CORE_API_URL}/api/dispatch/cluster/${clusterId}/status`, { status: 'rejected' });
+        } catch (e) {
+            console.error('[IDS Sync] Error rejecting cluster:', e.message);
+        }
+
+        // Technically we might want to also flag the orders so they aren't assigned to this agent again
+        // But the rejection at the cluster level is usually sufficient as the Engine re-evaluates
+
+        res.json({ message: 'Cluster rejected successfully' });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get Current Active Delivery for Agent (Multiple, Ordered by Cluster Route Sequence)
+router.get('/current-delivery/:agentId', async (req, res) => {
+    try {
+        const agentId = req.params.agentId;
+
+        // 1. Find ALL active orders for this agent in the main DB
+        const orders = await Order.find({
+            deliveryAgentId: agentId,
+            status: { $in: ['Out for Delivery', 'in_transit'] }
+        });
+
+        if (!orders || orders.length === 0) {
+            return res.json([]);
+        }
+
+        // 2. Fetch the agent's active cluster from IDS DB 
+        // using the assigned_agent_id field.
+        const activeCluster = await IDSCluster.findOne({
+            assigned_agent_id: agentId,
+            status: { $in: ['assigned', 'in_transit', 'active'] }
+        });
+
+        // 3. Populate order details using the existing helper
+        let ordersWithDetails = await populateOrderDetails(orders);
+
+        // 4. If we have a cluster with a route sequence, apply ordering and 'next' logic
+        if (activeCluster && activeCluster.route_sequence && activeCluster.route_sequence.length > 0) {
+            const sequenceIds = activeCluster.route_sequence;
+
+            // Reorder the local orders based on the route sequence
+            ordersWithDetails.sort((a, b) => {
+                const indexA = sequenceIds.indexOf(a.orderId || a._id.toString());
+                const indexB = sequenceIds.indexOf(b.orderId || b._id.toString());
+
+                // If an order isn't in sequence (fallback), push it to the end
+                if (indexA === -1) return 1;
+                if (indexB === -1) return -1;
+
+                return indexA - indexB;
+            });
+
+            // Mark the very first order as 'next in sequence' allowing its completion
+            if (ordersWithDetails.length > 0) {
+                // Since they are ordered, index 0 is the next one to deliver
+                ordersWithDetails[0].isNextInSequence = true;
+
+                // All others are false
+                for (let i = 1; i < ordersWithDetails.length; i++) {
+                    ordersWithDetails[i].isNextInSequence = false;
+                }
+            }
+        } else {
+            // Fallback if no cluster is found, all are marked as 'next' 
+            // so frontend continues to work without sequence enforcement
+            ordersWithDetails.forEach(o => o.isNextInSequence = true);
+        }
+
+        res.json(ordersWithDetails);
+    } catch (err) {
+        console.error("Error in /current-delivery/:agentId :", err);
         res.status(500).json({ message: err.message });
     }
 });
@@ -369,7 +481,7 @@ router.post('/verify-otp', async (req, res) => {
         order.deliveryOtp = null; // Clear OTP
 
         // Update Payment Status if COD (Cash on Delivery)
-        // We update 'paymentStatus' (camelCase) based on DB inspection results.
+        // We update 'paymentStatus' and 'payment_status' to ensure compatibility with different schemas.
         if (order.paymentMethod) {
             const method = order.paymentMethod.toLowerCase().trim();
 
@@ -377,10 +489,9 @@ router.post('/verify-otp', async (req, res) => {
             if (['cash on delivery', 'cod', 'cash'].some(val => method.includes(val))) {
                 order.paymentStatus = 'Paid';
 
-                // Fallback for snake_case if schema mixes conventions
-                if (order.toObject().payment_status !== undefined) {
-                    order.payment_status = 'Paid';
-                }
+                // Mongoose strict: false allows this, but we explicitly set it using set() 
+                // to ensure MongoDB receives both casing styles if needed by other microservices.
+                order.set('payment_status', 'Paid');
             }
         }
 
@@ -395,6 +506,37 @@ router.post('/verify-otp', async (req, res) => {
             await axios.put(`${IDS_CORE_API_URL}/api/orders/${order.orderId || order._id.toString()}/status`, { status: 'delivered' });
         } catch (idsErr) {
             console.error('[IDS Sync] Failed to update order status to delivered:', idsErr.message);
+        }
+
+        // --- Cluster Progress Check ---
+        try {
+            const agentId = order.deliveryAgentId;
+            if (agentId) {
+                const activeCluster = await IDSCluster.findOne({
+                    assigned_agent_id: agentId,
+                    status: { $in: ['assigned', 'in_transit', 'active'] }
+                });
+
+                if (activeCluster && activeCluster.route_sequence) {
+                    const clusterOrderIds = activeCluster.route_sequence;
+
+                    // Check how many orders in this cluster are STILL NOT Delivered
+                    const pendingOrdersInCluster = await Order.countDocuments({
+                        $or: [{ orderId: { $in: clusterOrderIds } }, { _id: { $in: clusterOrderIds } }],
+                        status: { $ne: 'Delivered' }
+                    });
+
+                    // If zero, the entire clustered route is finished
+                    if (pendingOrdersInCluster === 0) {
+                        activeCluster.status = 'completed';
+                        activeCluster.updatedAt = new Date();
+                        await activeCluster.save();
+                        console.log(`[Cluster] Cluster ${activeCluster.cluster_id} marked as completed for agent ${agentId}`);
+                    }
+                }
+            }
+        } catch (clusterErr) {
+            console.error('Error updating cluster progress:', clusterErr);
         }
 
         res.json({ message: 'Order completed successfully', order });

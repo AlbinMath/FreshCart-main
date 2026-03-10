@@ -1,0 +1,123 @@
+import React, { useState, useEffect } from 'react';
+import { Users, Search, Filter, MoreVertical, Edit2, Trash2, ShoppingBag } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+const Customers = () => {
+    const [customers, setCustomers] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchCustomers();
+    }, []);
+
+    const fetchCustomers = async () => {
+        try {
+            const res = await fetch('http://localhost:5003/api/admin/customers');
+            const data = await res.json();
+            setCustomers(data);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+            setLoading(false);
+            toast.error('Failed to load customers');
+        }
+    };
+
+    return (
+        <div className="p-6 max-w-[1600px] mx-auto">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-900">Customer Management</h1>
+                    <p className="text-gray-500 mt-1">View customer logic, orders, and interactions</p>
+                </div>
+                <div className="flex items-center gap-3">
+                    <button className="flex items-center gap-2 bg-white border border-gray-300 px-4 py-2 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        <Filter size={18} />
+                        Filter
+                    </button>
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        Export Data
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                    <div className="relative w-full max-w-md">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search customers by name, email, phone..."
+                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead className="bg-gray-50 border-b">
+                            <tr>
+                                <th className="p-4 font-medium text-gray-600">Customer Details</th>
+                                <th className="p-4 font-medium text-gray-600">Order Stats</th>
+                                <th className="p-4 font-medium text-gray-600">Registered On</th>
+                                <th className="p-4 font-medium text-gray-600">Status</th>
+                                <th className="p-4 font-medium text-gray-600">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan="5" className="p-8 text-center text-gray-500">Loading customers...</td>
+                                </tr>
+                            ) : customers.length > 0 ? (
+                                customers.map(customer => (
+                                    <tr key={customer._id} className="hover:bg-gray-50">
+                                        <td className="p-4">
+                                            <div className="font-semibold text-gray-900">{customer.fullName}</div>
+                                            <div className="text-sm text-gray-500">{customer.email}</div>
+                                            {customer.phone && <div className="text-xs text-gray-400">{customer.phone}</div>}
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2 text-sm text-gray-900">
+                                                <ShoppingBag size={14} className="text-indigo-500" />
+                                                {customer.totalOrders} Orders
+                                            </div>
+                                            <div className="text-sm font-medium text-green-600 mt-1">
+                                                ₹{customer.totalSpent.toLocaleString()} Spent
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-sm text-gray-500">
+                                            {new Date(customer.registeredAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="p-4">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${customer.status === 'Active' ? 'bg-green-100 text-green-700' :
+                                                    customer.status === 'Inactive' ? 'bg-gray-100 text-gray-700' :
+                                                        'bg-red-100 text-red-700'
+                                                }`}>
+                                                {customer.status}
+                                            </span>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2">
+                                                <button className="p-1 text-gray-400 hover:text-gray-900 rounded"><MoreVertical size={20} /></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan="5" className="p-8 text-center text-gray-500">
+                                        <Users className="mx-auto mb-3 text-gray-400" size={32} />
+                                        <p>No customers found.</p>
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default Customers;

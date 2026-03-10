@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { cartService } from '../services/cartService';
 import { Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export default function Cart() {
     const { currentUser } = useAuth();
@@ -11,14 +12,36 @@ export default function Cart() {
     const [error, setError] = useState(null);
     const [taxDetails, setTaxDetails] = useState(null);
     const [calculatingTax, setCalculatingTax] = useState(false);
+    const [coupons, setCoupons] = useState([]);
+    const [copiedCode, setCopiedCode] = useState(null);
+
+    const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
     useEffect(() => {
         if (currentUser) {
             fetchCart();
+            fetchActiveCoupons();
         } else {
             setLoading(false);
         }
     }, [currentUser]);
+
+    const fetchActiveCoupons = async () => {
+        try {
+            const res = await fetch(`${API_BASE}/marketing/active-coupons`);
+            const data = await res.json();
+            if (Array.isArray(data)) setCoupons(data);
+        } catch (err) {
+            console.error('Failed to fetch coupons', err);
+        }
+    };
+
+    const handleCopyCode = (code) => {
+        navigator.clipboard.writeText(code).then(() => {
+            setCopiedCode(code);
+            setTimeout(() => setCopiedCode(null), 2000);
+        });
+    };
 
     const fetchCart = async () => {
         try {
@@ -45,12 +68,26 @@ export default function Cart() {
             setCalculatingTax(true);
             const subtotal = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
-            // Calculate delivery fee based on subtotal
-            let deliveryFee = 50;
-            if (subtotal > 1000) {
-                deliveryFee = 0;
-            } else if (subtotal >= 600) {
-                deliveryFee = 10;
+            // Calculate delivery fee based on active plan rules
+            let deliveryFee = 50; // standard fallback
+            const activePlan = currentUser?.activePremiumPlan;
+
+            if (activePlan && activePlan.status === 'active') {
+                const planName = activePlan.planName.toLowerCase();
+                if (planName === 'elite' || planName === 'premium') {
+                    deliveryFee = 0;
+                } else if (planName === 'plus') {
+                    deliveryFee = subtotal > 200 ? 0 : 40;
+                } else if (planName === 'lite') {
+                    deliveryFee = subtotal > 500 ? 0 : 50;
+                }
+            } else {
+                // Generic logic if no premium plan
+                if (subtotal > 1000) {
+                    deliveryFee = 0;
+                } else if (subtotal >= 600) {
+                    deliveryFee = 10;
+                }
             }
 
             const platformFee = 5;
@@ -112,20 +149,43 @@ export default function Cart() {
         }
     };
 
-    const handleRemove = async (productId) => {
-        if (!window.confirm("Are you sure you want to remove this item?")) return;
-        try {
-            const response = await cartService.removeFromCart(currentUser.uid, productId);
-            if (response.success) {
-                setCartItems(items => items.filter(item => item.productId !== productId));
-                showToast("Item removed from cart", 'success');
-            } else {
-                showToast("Failed to remove item", 'error');
-            }
-        } catch (err) {
-            console.error(err);
-            showToast("Error removing item", 'error');
-        }
+    const handleRemove = (productId) => {
+        toast((t) => (
+            <div className="flex flex-col gap-3">
+                <p className="font-medium text-gray-900">Are you sure you want to remove this item?</p>
+                <div className="flex justify-end gap-2 mt-1">
+                    <button
+                        onClick={() => toast.dismiss(t.id)}
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={async () => {
+                            toast.dismiss(t.id);
+                            try {
+                                const response = await cartService.removeFromCart(currentUser.uid, productId);
+                                if (response.success) {
+                                    setCartItems(items => items.filter(item => item.productId !== productId));
+                                    showToast("Item removed from cart", 'success');
+                                } else {
+                                    showToast("Failed to remove item", 'error');
+                                }
+                            } catch (err) {
+                                console.error(err);
+                                showToast("Error removing item", 'error');
+                            }
+                        }}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors shadow-sm"
+                    >
+                        Remove
+                    </button>
+                </div>
+            </div>
+        ), {
+            duration: Infinity,
+            position: 'top-center'
+        });
     };
 
     const formatPrice = (price) => {
@@ -254,6 +314,74 @@ export default function Cart() {
                                     ))}
                                 </ul>
                             </div>
+
+                            {/* Active Coupons Section */}
+                            {coupons.length > 0 && (
+                                <div className="mt-6 bg-white rounded-lg shadow-md p-5">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A2 2 0 013 12V7a2 2 0 012-2z" />
+                                        </svg>
+                                        <h2 className="text-base font-semibold text-gray-800">Available Coupons</h2>
+                                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">{coupons.length} active</span>
+                                    </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {coupons.map(coupon => (
+                                            <div key={coupon._id} className="relative bg-gradient-to-r from-green-50 to-emerald-50 border border-dashed border-green-300 rounded-xl p-4 overflow-hidden">
+                                                {/* Decorative notch circles */}
+                                                <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-50 rounded-full border border-gray-200"></div>
+                                                <div className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-50 rounded-full border border-gray-200"></div>
+
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        {/* Discount label */}
+                                                        <span className="inline-block bg-green-600 text-white text-xs font-extrabold px-2.5 py-1 rounded-md mb-1.5">
+                                                            {coupon.discountType === 'PERCENTAGE'
+                                                                ? `${coupon.discountValue}% OFF`
+                                                                : `Rs.${coupon.discountValue} OFF`}
+                                                        </span>
+                                                        <p className="text-xs text-gray-500">
+                                                            Valid: {coupon.validFromDate} &mdash; {coupon.validToDate}
+                                                        </p>
+                                                        {coupon.keywords?.length > 0 && (
+                                                            <p className="text-xs text-gray-400 mt-0.5 truncate">{coupon.keywords.join(', ')}</p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Copyable code button */}
+                                                    <button
+                                                        onClick={() => handleCopyCode(coupon.code)}
+                                                        title="Click to copy coupon code"
+                                                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-mono font-bold transition-all duration-200 flex-shrink-0 select-none ${copiedCode === coupon.code
+                                                                ? 'bg-green-600 text-white border-green-600 scale-95 shadow-inner'
+                                                                : 'bg-white text-green-700 border-green-400 hover:bg-green-100 shadow-sm'
+                                                            }`}
+                                                    >
+                                                        {copiedCode === coupon.code ? (
+                                                            <>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                                Copied!
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                                </svg>
+                                                                {coupon.code}
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-xs text-gray-400 mt-3 text-center">
+                                        &#128203; Click a coupon code to copy &mdash; paste it at checkout to save
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Order Summary */}
