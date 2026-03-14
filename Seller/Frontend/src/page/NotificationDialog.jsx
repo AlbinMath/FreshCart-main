@@ -25,7 +25,7 @@ const NotificationDialog = ({ open, onOpenChange, notifications, onClear }) => {
                     </DialogDescription>
                 </DialogHeader>
 
-                <ScrollArea className="flex-1 p-4">
+                <ScrollArea className="flex-1 p-4 max-h-[60vh] overflow-y-auto">
                     {notifications.length > 0 ? (
                         <div className="space-y-3">
                             {notifications.map((notif) => (

@@ -21,7 +21,7 @@ const Sidebar = () => {
         { icon: Truck, label: 'My Deliveries', path: '/my-delivery', badge: 3 },
         { icon: DollarSign, label: 'Earnings', path: '/earnings' },
         { icon: MapPin, label: 'Location Tracking', path: '/tracking' },
-        { icon: Settings, label: 'Profile Settings', path: '/settings' },
+        { icon: Settings, label: 'Settings', path: '/settings' },
     ];
 
     return (

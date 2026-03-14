@@ -1,0 +1,6 @@
+flask
+flask-cors
+textblob
+nltk
+python-dotenv
+axios

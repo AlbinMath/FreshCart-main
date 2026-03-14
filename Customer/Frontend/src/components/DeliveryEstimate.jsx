@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import apiService from '../services/apiService';
 
 // ─────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────
 
-/** Geocode a text address → {lat, lon} via OpenStreetMap Nominatim (free, no key) */
+/** Geocode a text address → {lat, lon} via Backend Proxy (to avoid CORS) */
 export async function geocodeAddress(address) {
     if (!address) return null;
     try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
-        const res = await fetch(url, {
-            headers: { 'Accept-Language': 'en', 'User-Agent': 'FreshCart-App/1.0' }
-        });
-        const data = await res.json();
-        if (data && data.length > 0) return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        const response = await apiService.get(`/users/geolocation/search?q=${encodeURIComponent(address)}`);
+        if (response.success && response.data && response.data.length > 0) {
+            return { lat: parseFloat(response.data[0].lat), lon: parseFloat(response.data[0].lon) };
+        }
         return null;
     } catch { return null; }
 }

@@ -11,8 +11,21 @@ import OrderDetailsDialog from './OrderDetailsDialog';
 const Orders = () => {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [performanceData, setPerformanceData] = useState(null);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    const fetchPerformance = async (sid) => {
+        try {
+            const res = await fetch(`http://localhost:6002/evaluate/${sid}`);
+            if (res.ok) {
+                const data = await res.json();
+                setPerformanceData(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch performance evaluation", error);
+        }
+    };
 
     const handleViewOrder = (order) => {
         setSelectedOrder(order);
@@ -65,6 +78,13 @@ const Orders = () => {
         // Initial fetch
         fetchOrders();
 
+        const sellerInfoStr = localStorage.getItem('sellerInfo');
+        if (sellerInfoStr) {
+            const parsed = JSON.parse(sellerInfoStr);
+            const seller = parsed.user || parsed;
+            fetchPerformance(seller.sellerUniqueId || seller._id);
+        }
+
         // Poll every 10 seconds
         const interval = setInterval(() => {
             fetchOrders(true);
@@ -86,12 +106,40 @@ const Orders = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Order Processing</h2>
                     <p className="text-muted-foreground mt-1">Manage and track your customer orders.</p>
                 </div>
-                {/* Optional: Add Manual Order button if needed */}
+                
+                {performanceData?.success && (
+                    <div className="flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-blue-100">
+                        <div className={`p-2 rounded-lg ${
+                            performanceData.tier === 'Excellent' ? 'bg-green-50 text-green-600' : 
+                            performanceData.tier === 'Good' ? 'bg-blue-50 text-blue-600' : 
+                            performanceData.tier === 'Average' ? 'bg-yellow-50 text-yellow-600' : 
+                            performanceData.tier === 'New Seller' ? 'bg-gray-50 text-gray-400' : 'bg-red-50 text-red-600'
+                        }`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trending-up"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-gray-500 uppercase">Seller Tier</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                    performanceData.tier === 'Excellent' ? 'bg-green-100 text-green-700' : 
+                                    performanceData.tier === 'Good' ? 'bg-blue-100 text-blue-700' : 
+                                    performanceData.tier === 'Average' ? 'bg-yellow-100 text-yellow-700' : 
+                                    performanceData.tier === 'New Seller' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-700'
+                                }`}>
+                                    {performanceData.tier}
+                                </span>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                                <span className="text-sm font-bold text-gray-800">{((performanceData.confidence || 0) * 100).toFixed(0)}% AI Confidence</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <Card>

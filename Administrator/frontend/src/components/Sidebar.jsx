@@ -21,7 +21,6 @@ const Sidebar = () => {
         { icon: Users, label: 'User Management', path: '/dashboard/users' },
         { icon: CheckCircle, label: 'Product Approval', path: '/dashboard/product-approval' },
         { icon: ListOrdered, label: 'Order Monitoring', path: '/dashboard/orders' },
-        { icon: Receipt, label: 'Tax Management', path: '/dashboard/tax' },
         { icon: DollarSign, label: 'Marketing & Promotions', path: '/dashboard/marketing' },
 
 

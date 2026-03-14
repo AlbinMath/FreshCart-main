@@ -12,33 +12,72 @@ export default function ReviewOrder() {
     const [showSuccess, setShowSuccess] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [productDetails, setProductDetails] = useState(null);
+    const [orderItems, setOrderItems] = useState([]);
+    const [selectedProductId, setSelectedProductId] = useState(productId || null);
 
     useEffect(() => {
         if (orderId && currentUser) {
-            fetchReview();
+            fetchOrderAndItems();
         }
-        if (productId) {
-            fetchProductDetails();
-        }
-    }, [orderId, productId, currentUser]);
+    }, [orderId, currentUser]);
 
-    const fetchProductDetails = async () => {
+    useEffect(() => {
+        if (selectedProductId) {
+            fetchProductDetails(selectedProductId);
+            fetchReview(selectedProductId);
+        }
+    }, [selectedProductId]);
+
+    const fetchOrderAndItems = async () => {
         try {
-            const response = await apiService.get(`/public/product/${productId}`);
+            setLoading(true);
+            const response = await apiService.get(`/payment/order/${orderId}`);
+            if (response.success && response.order) {
+                const items = response.order.items.map(item => ({
+                    ...item,
+                    id: item.productId || item._id
+                }));
+                setOrderItems(items);
+                
+                // Auto-select first item if none selected and not coming from a direct product link
+                if (!selectedProductId && items.length > 0) {
+                    setSelectedProductId(items[0].id);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to fetch order items:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchProductDetails = async (pid) => {
+        try {
+            const response = await apiService.get(`/public/products/${pid}`);
             if (response.success) {
                 setProductDetails(response.product);
+            } else {
+                // Fallback to order item details if product not found in public products
+                const item = orderItems.find(i => i.id === pid);
+                if (item) {
+                    setProductDetails({
+                        ...item,
+                        _id: item.id,
+                        productName: item.productName,
+                        images: [item.image]
+                    });
+                }
             }
         } catch (error) {
             console.error("Failed to fetch product details:", error);
         }
     };
 
-    const fetchReview = async () => {
+    const fetchReview = async (pid) => {
         try {
-            const url = productId
-                ? `/reviews/order/${orderId}/product/${productId}`
-                : `/reviews/order/${orderId}`;
-            const response = await apiService.get(url);
+            const URL = `/reviews/order/${orderId}/product/${pid}`;
+            const response = await apiService.get(URL);
+            
             if (response.success && response.review) {
                 const review = response.review;
                 setFormData({
@@ -52,10 +91,23 @@ export default function ReviewOrder() {
                     deliveryReview: review.deliveryReview || ''
                 });
                 setIsEditing(true);
+            } else {
+                // Reset form for new review
+                setFormData({
+                    productRate: 0,
+                    qualityRate: 0,
+                    deliveryRate: 0,
+                    overallRate: 0,
+                    likeFeatures: [],
+                    reviewText: '',
+                    suggestion: '',
+                    deliveryReview: ''
+                });
+                setIsEditing(false);
             }
         } catch (error) {
-            // It's okay if not found, means new review
-            console.log("No existing review found or error fetching:", error);
+            console.log("No existing review found for this product.");
+            setIsEditing(false);
         }
     };
 
@@ -111,8 +163,15 @@ export default function ReviewOrder() {
             const submitData = {
                 userId: currentUser.uid,
                 orderId,
-                productId,
-                ...formData
+                productId: productId || productDetails?._id || "ORDER_LEVEL",
+                ...formData,
+                productRate: formData.productRate || undefined,
+                qualityRate: formData.qualityRate || undefined,
+                deliveryRate: formData.deliveryRate || 1, // Default min 1
+                overallRate: formData.overallRate || 1,    // Default min 1
+                productName: productDetails?.productName,
+                productImage: productDetails?.image || (productDetails?.images && productDetails?.images[0]),
+                productCategory: productDetails?.category
             };
 
             if (isEditing) {
@@ -124,8 +183,9 @@ export default function ReviewOrder() {
 
             if (response.success) {
                 setShowSuccess(true);
+                const targetPath = productId ? '/' : '/orders';
                 setTimeout(() => {
-                    navigate('/orders');
+                    navigate(targetPath);
                 }, 3000);
             } else {
                 alert(response.message || "Failed to submit review");
@@ -159,6 +219,7 @@ export default function ReviewOrder() {
     );
 
     if (showSuccess) {
+        const targetLabel = productId ? 'home' : 'orders';
         return (
             <div className="min-h-screen bg-gray-50 flex items-center justify-center font-sans">
                 <div className="bg-white p-12 rounded-2xl shadow-xl text-center max-w-md w-full animate-fade-in-up">
@@ -172,7 +233,7 @@ export default function ReviewOrder() {
                     <div className="w-full bg-gray-200 rounded-full h-1.5 mb-2 overflow-hidden">
                         <div className="bg-green-600 h-1.5 rounded-full animate-progress" style={{ width: '100%' }}></div>
                     </div>
-                    <p className="text-sm text-gray-400">Redirecting to home...</p>
+                    <p className="text-sm text-gray-400">Redirecting to {targetLabel}...</p>
                 </div>
                 <style>{`
                     @keyframes progress {
@@ -198,21 +259,50 @@ export default function ReviewOrder() {
         <div className="min-h-screen bg-gray-50 font-sans pb-12">
 
             <div className="container mx-auto px-4 py-8">
-                <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
+                {loading && !productDetails ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+                        <p className="mt-4 text-gray-500">Loading order details...</p>
+                    </div>
+                ) : (
+                    <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-8">
                     <h1 className="text-2xl font-bold text-gray-800 mb-2">Rate Your Experience</h1>
 
+                    {/* Order Items Selection */}
+                    {orderItems.length > 1 && (
+                        <div className="mb-6">
+                            <p className="text-sm font-medium text-gray-500 mb-3">Rate another item from this order:</p>
+                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-200">
+                                {orderItems.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setSelectedProductId(item.id)}
+                                        className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 transition overflow-hidden ${selectedProductId === item.id ? 'border-green-500 ring-2 ring-green-100' : 'border-gray-200 hover:border-green-300'}`}
+                                    >
+                                        <img src={item.image} alt={item.productName} className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {productDetails && (
-                        <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-xl border">
+                        <div className="flex items-center gap-4 mb-6 p-4 bg-gray-50 rounded-xl border border-green-100">
                             <img
                                 src={productDetails.image || (productDetails.images && productDetails.images[0])}
                                 alt={productDetails.productName}
                                 className="h-20 w-20 object-cover rounded-lg border shadow-sm"
                             />
-                            <div>
-                                <h3 className="font-bold text-gray-900">{productDetails.productName}</h3>
+                            <div className="flex-1">
+                                <h3 className="font-bold text-gray-900 leading-tight">{productDetails.productName}</h3>
                                 <p className="text-sm text-gray-500">{productDetails.category}</p>
-                                <p className="text-xs text-gray-400 mt-1">Order #{orderId?.slice(-6)}</p>
+                                <p className="text-xs text-gray-600 mt-1 bg-white inline-block px-2 py-0.5 rounded border border-gray-200">Order #{orderId?.slice(-6).toUpperCase()}</p>
                             </div>
+                            {isEditing && (
+                                <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-2 py-1 rounded-full uppercase tracking-tighter">
+                                    Updating Previous Review
+                                </span>
+                            )}
                         </div>
                     )}
 
@@ -296,14 +386,15 @@ export default function ReviewOrder() {
                         <div className="mt-4 text-center">
                             <button
                                 type="button"
-                                onClick={() => navigate('/orders')}
+                                onClick={() => navigate(productId ? '/' : '/orders')}
                                 className="text-gray-600 hover:text-green-600 font-medium transition"
                             >
-                                Back to My Orders
+                                {productId ? 'Back to Home' : 'Back to My Orders'}
                             </button>
                         </div>
                     </form>
-                </div>
+                    </div>
+                )}
             </div>
         </div>
     );

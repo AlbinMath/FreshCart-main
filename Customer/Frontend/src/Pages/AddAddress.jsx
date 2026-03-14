@@ -178,11 +178,9 @@ export default function AddAddress() {
 
         setMapLoading(true);
         try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`);
-            const data = await response.json();
-
-            if (data && data.address) {
-                const addr = data.address;
+            const response = await apiService.get(`/users/geolocation/reverse?lat=${latlng.lat}&lon=${latlng.lng}`);
+            if (response.success && response.data && response.data.address) {
+                const addr = response.data.address;
                 setFormData(prev => ({
                     ...prev,
                     houseNumber: addr.house_number || prev.houseNumber,

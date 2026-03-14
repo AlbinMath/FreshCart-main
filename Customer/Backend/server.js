@@ -61,6 +61,9 @@ app.use('/api/public/premium-plans', premiumPlanRoutes);
 const marketingRoutes = require('./routes/marketingRoutes');
 app.use('/api/marketing', marketingRoutes);
 
+const growerRoutes = require('./routes/growerRoutes');
+app.use('/api/grower', growerRoutes);
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

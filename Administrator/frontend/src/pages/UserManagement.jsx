@@ -105,7 +105,15 @@ const UserManagement = () => {
                                             {activeTab === 'DeliveryAgent' && (
                                                 <>
                                                     <td className="px-6 py-4 whitespace-nowrap">
-                                                        <div className="font-medium text-gray-900">{user.fullName}</div>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedUser(user);
+                                                                setIsModalOpen(true);
+                                                            }}
+                                                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                                        >
+                                                            {user.fullName}
+                                                        </button>
                                                         <div className="text-xs text-gray-500">{user.email}</div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.contactNumber}</td>
@@ -119,7 +127,17 @@ const UserManagement = () => {
                                             )}
                                             {activeTab === 'Seller' && (
                                                 <>
-                                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{user.storeName}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedUser(user);
+                                                                setIsModalOpen(true);
+                                                            }}
+                                                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                                        >
+                                                            {user.storeName}
+                                                        </button>
+                                                    </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.sellerName}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="text-sm text-gray-900">{user.phoneNumber}</div>
@@ -134,7 +152,17 @@ const UserManagement = () => {
                                             )}
                                             {activeTab === 'Customer' && (
                                                 <>
-                                                    <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">{user.name}</td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedUser(user);
+                                                                setIsModalOpen(true);
+                                                            }}
+                                                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline text-left"
+                                                        >
+                                                            {user.name}
+                                                        </button>
+                                                    </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.phoneNumber}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -177,8 +205,8 @@ const UserManagement = () => {
 
             {/* Detail Modal */}
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogContent className="max-w-3xl">
-                    <DialogHeader>
+                <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b">
                         <DialogTitle>
                             {activeTab === 'DeliveryAgent' ? 'Delivery Agent Details' :
                                 activeTab === 'Seller' ? 'Seller Details' : 'Customer Details'}
@@ -188,165 +216,167 @@ const UserManagement = () => {
                         </DialogDescription>
                     </DialogHeader>
 
-                    {selectedUser && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
-                            {/* Profile Section - Spans full width on mobile, left col on desktop */}
-                            <div className="md:col-span-2 flex items-center gap-4 bg-gray-50 p-4 rounded-lg border">
-                                <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-2xl border-2 border-green-200">
-                                    {(selectedUser.name || selectedUser.fullName || selectedUser.sellerName || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-gray-900">
-                                        {selectedUser.name || selectedUser.fullName || selectedUser.sellerName}
-                                    </h3>
-                                    <p className="text-sm text-gray-500">{selectedUser.email}</p>
-                                    <Badge className={`mt-2 ${(selectedUser.status === 'active' || selectedUser.isVerified)
-                                        ? 'bg-green-100 text-green-700 hover:bg-green-100'
-                                        : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
-                                        }`}>
-                                        {selectedUser.status || (selectedUser.isVerified ? 'Verified' : 'Pending')}
-                                    </Badge>
-                                </div>
-                            </div>
-
-                            {/* Common Fields */}
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</label>
-                                <p className="text-gray-900 font-medium">{selectedUser.phone || selectedUser.phoneNumber || selectedUser.contactNumber || 'N/A'}</p>
-                            </div>
-
-                            {/* Delivery Agent Specific */}
-                            {activeTab === 'DeliveryAgent' && (
-                                <>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date of Birth</label>
-                                        <p className="text-gray-900">{selectedUser.dateOfBirth ? new Date(selectedUser.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
+                    <div className="flex-1 overflow-y-auto p-6">
+                        {selectedUser && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+                                {/* Profile Section - Spans full width on mobile, left col on desktop */}
+                                <div className="md:col-span-2 flex items-center gap-4 bg-gray-50 p-4 rounded-lg border">
+                                    <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-bold text-2xl border-2 border-green-200">
+                                        {(selectedUser.name || selectedUser.fullName || selectedUser.sellerName || 'U').charAt(0).toUpperCase()}
                                     </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-gray-900">
+                                            {selectedUser.name || selectedUser.fullName || selectedUser.sellerName}
+                                        </h3>
+                                        <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                                        <Badge className={`mt-2 ${(selectedUser.status === 'active' || selectedUser.isVerified)
+                                            ? 'bg-green-100 text-green-700 hover:bg-green-100'
+                                            : 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100'
+                                            }`}>
+                                            {selectedUser.status || (selectedUser.isVerified ? 'Verified' : 'Pending')}
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                {/* Common Fields */}
+                                <div className="space-y-1">
+                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Phone</label>
+                                    <p className="text-gray-900 font-medium">{selectedUser.phone || selectedUser.phoneNumber || selectedUser.contactNumber || 'N/A'}</p>
+                                </div>
+
+                                {/* Delivery Agent Specific */}
+                                {activeTab === 'DeliveryAgent' && (
+                                    <>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date of Birth</label>
+                                            <p className="text-gray-900">{selectedUser.dateOfBirth ? new Date(selectedUser.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
+                                        </div>
+                                        <div className="md:col-span-2 space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Residential Address</label>
+                                            <p className="text-gray-900">{selectedUser.residentialAddress || 'N/A'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle Type</label>
+                                            <p className="text-gray-900">{selectedUser.vehicleType || 'N/A'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle Registration</label>
+                                            <p className="text-gray-900">{selectedUser.vehicleRegistrationNumber || 'N/A'}</p>
+                                        </div>
+
+                                        <div className="md:col-span-2 mt-4">
+                                            <h4 className="text-sm font-bold text-gray-900 border-b pb-2 mb-3">Bank Details</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Account Holder</label>
+                                                    <p className="font-medium">{selectedUser.accountHolderName || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Account Number</label>
+                                                    <p className="font-medium">{selectedUser.bankAccountNumber || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">IFSC Code</label>
+                                                    <p className="font-medium">{selectedUser.ifscCode || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">UPI ID</label>
+                                                    <p className="font-medium">{selectedUser.upiId || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Seller Specific */}
+                                {activeTab === 'Seller' && (
+                                    <>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Store Name</label>
+                                            <p className="text-gray-900 font-medium">{selectedUser.storeName || 'N/A'}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Business Type</label>
+                                            <p className="text-gray-900">{selectedUser.businessType || 'N/A'}</p>
+                                        </div>
+                                        <div className="md:col-span-2 space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Store Address</label>
+                                            <p className="text-gray-900">{selectedUser.storeAddress || 'N/A'} - {selectedUser.pinCode}</p>
+                                        </div>
+
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">GST / Reg No</label>
+                                            <div className="flex items-center gap-2">
+                                                <span>{selectedUser.businessRegistrationNumberOrGST || 'N/A'}</span>
+                                                <Badge variant="outline" className={selectedUser.gstDocumentStatus === 'verified' ? 'text-green-600 border-green-200' : 'text-yellow-600 border-yellow-200'}>
+                                                    {selectedUser.gstDocumentStatus}
+                                                </Badge>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">FSSAI License</label>
+                                            <div className="flex items-center gap-2">
+                                                <span>{selectedUser.fssaiLicenseNumber || 'N/A'}</span>
+                                                <Badge variant="outline" className={selectedUser.fssaiLicenseStatus === 'verified' ? 'text-green-600 border-green-200' : 'text-yellow-600 border-yellow-200'}>
+                                                    {selectedUser.fssaiLicenseStatus}
+                                                </Badge>
+                                            </div>
+                                        </div>
+
+                                        <div className="md:col-span-2 mt-4">
+                                            <h4 className="text-sm font-bold text-gray-900 border-b pb-2 mb-3">Operating & Delivery</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Operating Hours</label>
+                                                    <p className="font-medium">{selectedUser.operatingHours || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Delivery Method</label>
+                                                    <p className="font-medium">{selectedUser.deliveryMethod || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="md:col-span-2 mt-4">
+                                            <h4 className="text-sm font-bold text-gray-900 border-b pb-2 mb-3">Financial Information</h4>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Account Holder</label>
+                                                    <p className="font-medium">{selectedUser.bankAccountHolderName || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">Account Number</label>
+                                                    <p className="font-medium">{selectedUser.bankAccountNumber || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">IFSC Code</label>
+                                                    <p className="font-medium">{selectedUser.ifscCode || 'N/A'}</p>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs text-gray-500">PAN Number</label>
+                                                    <p className="font-medium">{selectedUser.panNumber || 'N/A'}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* Customer Specific */}
+                                {activeTab === 'Customer' && selectedUser.addressDetails && (
                                     <div className="md:col-span-2 space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Residential Address</label>
-                                        <p className="text-gray-900">{selectedUser.residentialAddress || 'N/A'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle Type</label>
-                                        <p className="text-gray-900">{selectedUser.vehicleType || 'N/A'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Vehicle Registration</label>
-                                        <p className="text-gray-900">{selectedUser.vehicleRegistrationNumber || 'N/A'}</p>
-                                    </div>
-
-                                    <div className="md:col-span-2 mt-4">
-                                        <h4 className="text-sm font-bold text-gray-900 border-b pb-2 mb-3">Bank Details</h4>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">Account Holder</label>
-                                                <p className="font-medium">{selectedUser.accountHolderName || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">Account Number</label>
-                                                <p className="font-medium">{selectedUser.bankAccountNumber || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">IFSC Code</label>
-                                                <p className="font-medium">{selectedUser.ifscCode || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">UPI ID</label>
-                                                <p className="font-medium">{selectedUser.upiId || 'N/A'}</p>
-                                            </div>
+                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</label>
+                                        <div className="bg-gray-50 p-3 rounded border text-sm">
+                                            <p>{selectedUser.addressDetails.street}</p>
+                                            <p>{selectedUser.addressDetails.city}, {selectedUser.addressDetails.state}</p>
+                                            <p>{selectedUser.addressDetails.country} - {selectedUser.addressDetails.zipCode}</p>
                                         </div>
                                     </div>
-                                </>
-                            )}
+                                )}
+                            </div>
+                        )}
+                    </div>
 
-                            {/* Seller Specific */}
-                            {activeTab === 'Seller' && (
-                                <>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Store Name</label>
-                                        <p className="text-gray-900 font-medium">{selectedUser.storeName || 'N/A'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Business Type</label>
-                                        <p className="text-gray-900">{selectedUser.businessType || 'N/A'}</p>
-                                    </div>
-                                    <div className="md:col-span-2 space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Store Address</label>
-                                        <p className="text-gray-900">{selectedUser.storeAddress || 'N/A'} - {selectedUser.pinCode}</p>
-                                    </div>
-
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">GST / Reg No</label>
-                                        <div className="flex items-center gap-2">
-                                            <span>{selectedUser.businessRegistrationNumberOrGST || 'N/A'}</span>
-                                            <Badge variant="outline" className={selectedUser.gstDocumentStatus === 'verified' ? 'text-green-600 border-green-200' : 'text-yellow-600 border-yellow-200'}>
-                                                {selectedUser.gstDocumentStatus}
-                                            </Badge>
-                                        </div>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">FSSAI License</label>
-                                        <div className="flex items-center gap-2">
-                                            <span>{selectedUser.fssaiLicenseNumber || 'N/A'}</span>
-                                            <Badge variant="outline" className={selectedUser.fssaiLicenseStatus === 'verified' ? 'text-green-600 border-green-200' : 'text-yellow-600 border-yellow-200'}>
-                                                {selectedUser.fssaiLicenseStatus}
-                                            </Badge>
-                                        </div>
-                                    </div>
-
-                                    <div className="md:col-span-2 mt-4">
-                                        <h4 className="text-sm font-bold text-gray-900 border-b pb-2 mb-3">Operating & Delivery</h4>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">Operating Hours</label>
-                                                <p className="font-medium">{selectedUser.operatingHours || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">Delivery Method</label>
-                                                <p className="font-medium">{selectedUser.deliveryMethod || 'N/A'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="md:col-span-2 mt-4">
-                                        <h4 className="text-sm font-bold text-gray-900 border-b pb-2 mb-3">Financial Information</h4>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">Account Holder</label>
-                                                <p className="font-medium">{selectedUser.bankAccountHolderName || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">Account Number</label>
-                                                <p className="font-medium">{selectedUser.bankAccountNumber || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">IFSC Code</label>
-                                                <p className="font-medium">{selectedUser.ifscCode || 'N/A'}</p>
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="text-xs text-gray-500">PAN Number</label>
-                                                <p className="font-medium">{selectedUser.panNumber || 'N/A'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Customer Specific */}
-                            {activeTab === 'Customer' && selectedUser.addressDetails && (
-                                <div className="md:col-span-2 space-y-1">
-                                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Address</label>
-                                    <div className="bg-gray-50 p-3 rounded border text-sm">
-                                        <p>{selectedUser.addressDetails.street}</p>
-                                        <p>{selectedUser.addressDetails.city}, {selectedUser.addressDetails.state}</p>
-                                        <p>{selectedUser.addressDetails.country} - {selectedUser.addressDetails.zipCode}</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    <DialogFooter>
+                    <DialogFooter className="p-4 border-t bg-gray-50">
                         <Button variant="outline" onClick={() => setIsModalOpen(false)}>
                             Close
                         </Button>

@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tag, Clock, Plus, Trash2 } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const getSellerId = () => {
     const info = localStorage.getItem('sellerInfo');
@@ -11,7 +12,32 @@ const getSellerId = () => {
 };
 
 const Marketing = () => {
-    const [activeTab, setActiveTab] = useState('coupons');
+    const location = useLocation();
+    const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'coupons');
+    const [performanceData, setPerformanceData] = useState(null);
+
+    useEffect(() => {
+        const fetchPerformance = async () => {
+            const sid = getSellerId();
+            if (!sid) return;
+            
+            // Try to find uniqueId if available for better mapping
+            const info = localStorage.getItem('sellerInfo');
+            const parsed = info ? JSON.parse(info) : {};
+            const perfId = parsed.sellerId || parsed.user?.sellerId || parsed.sellerUniqueId || parsed.user?.sellerUniqueId || sid;
+
+            try {
+                const res = await fetch(`http://localhost:6002/evaluate/${perfId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setPerformanceData(data);
+                }
+            } catch (error) {
+                console.error("Failed to fetch performance evaluation", error);
+            }
+        };
+        fetchPerformance();
+    }, []);
 
     return (
         <div className="p-6 max-w-[1600px] mx-auto">
@@ -20,6 +46,35 @@ const Marketing = () => {
                     <h1 className="text-2xl font-bold text-gray-900">Marketing & Promotions</h1>
                     <p className="text-gray-500 mt-1">Manage store-specific coupons and flash sales</p>
                 </div>
+
+                {performanceData?.success && (
+                    <div className="flex items-center gap-3 bg-white p-3 rounded-xl shadow-sm border border-purple-100">
+                        <div className={`p-2 rounded-lg ${
+                            performanceData.tier === 'Excellent' ? 'bg-green-50 text-green-600' : 
+                            performanceData.tier === 'Good' ? 'bg-blue-50 text-blue-600' : 
+                            performanceData.tier === 'Average' ? 'bg-yellow-50 text-yellow-600' : 
+                            performanceData.tier === 'New Seller' ? 'bg-gray-50 text-gray-400' : 'bg-red-50 text-red-600'
+                        }`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-trending-up"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" /></svg>
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-gray-500 uppercase">Seller Tier</span>
+                                <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                                    performanceData.tier === 'Excellent' ? 'bg-green-100 text-green-700' : 
+                                    performanceData.tier === 'Good' ? 'bg-blue-100 text-blue-700' : 
+                                    performanceData.tier === 'Average' ? 'bg-yellow-100 text-yellow-700' : 
+                                    performanceData.tier === 'New Seller' ? 'bg-gray-100 text-gray-500' : 'bg-red-100 text-red-700'
+                                }`}>
+                                    {performanceData.tier}
+                                </span>
+                            </div>
+                            <div className="mt-0.5 flex items-center gap-1.5">
+                                <span className="text-sm font-bold text-gray-800">{((performanceData.confidence || 0) * 100).toFixed(0)}% AI Confidence</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <div className="flex p-1 bg-gray-100 rounded-lg">
                     <button

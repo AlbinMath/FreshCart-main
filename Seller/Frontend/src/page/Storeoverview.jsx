@@ -68,7 +68,21 @@ const StoreOverview = () => {
     const [products, setProducts] = useState([]);
     const [orders, setOrders] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [performanceData, setPerformanceData] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const fetchPerformance = async (sellerId) => {
+        try {
+            // Use port 6002 as configured in the Python service
+            const res = await fetch(`http://localhost:6002/evaluate/${sellerId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setPerformanceData(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch performance evaluation", error);
+        }
+    };
 
     const fetchNotifications = async (sellerId) => {
         try {
@@ -113,6 +127,13 @@ const StoreOverview = () => {
 
                     // Fetch Notifications
                     fetchNotifications(sellerId);
+
+                    // Fetch Performance Evaluation (SVM)
+                    if (seller.sellerUniqueId) {
+                        fetchPerformance(seller.sellerUniqueId);
+                    } else if (sellerId) {
+                        fetchPerformance(sellerId);
+                    }
                 }
             } catch (e) {
                 console.error("Error loading data", e);
@@ -217,18 +238,41 @@ const StoreOverview = () => {
                     <h2 className="text-2xl font-bold tracking-tight">Dashboard Overview</h2>
                     <p className="text-sm text-gray-500">Welcome back, {storeInfo?.sellerName || 'Seller'}!</p>
                 </div>
-                <Button
-                    variant="outline"
-                    className="relative"
-                    onClick={() => setIsNotificationsOpen(true)}
-                >
-                    <Bell className="h-5 w-5 text-gray-600" />
-                    {notifications.length > 0 && (
-                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white ring-2 ring-white">
-                            {notifications.length}
-                        </span>
+                <div className="flex items-center space-x-4">
+                    {performanceData?.success && (
+                        <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-green-100 cursor-help" title={`AI Confidence: ${(performanceData.confidence * 100).toFixed(0)}%`}>
+                            <TrendingUp className={`h-4 w-4 ${
+                                performanceData.tier === 'Excellent' ? 'text-green-600' : 
+                                performanceData.tier === 'Good' ? 'text-blue-600' : 
+                                performanceData.tier === 'Average' ? 'text-yellow-600' : 
+                                performanceData.tier === 'New Seller' ? 'text-gray-400' : 'text-red-600'
+                            }`} />
+                            <div className="flex flex-col text-left">
+                                <span className="text-[10px] font-bold text-gray-400 uppercase leading-none">AI Tier</span>
+                                <span className={`text-[11px] font-bold uppercase leading-tight ${
+                                    performanceData.tier === 'Excellent' ? 'text-green-700' : 
+                                    performanceData.tier === 'Good' ? 'text-blue-700' : 
+                                    performanceData.tier === 'Average' ? 'text-yellow-700' : 
+                                    performanceData.tier === 'New Seller' ? 'text-gray-500' : 'text-red-700'
+                                }`}>
+                                    {performanceData.tier}
+                                </span>
+                            </div>
+                        </div>
                     )}
-                </Button>
+                    <Button
+                        variant="outline"
+                        className="relative"
+                        onClick={() => setIsNotificationsOpen(true)}
+                    >
+                        <Bell className="h-5 w-5 text-gray-600" />
+                        {notifications.length > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white ring-2 ring-white">
+                                {notifications.length}
+                            </span>
+                        )}
+                    </Button>
+                </div>
             </div>
 
             {/* Stats Grid */}
@@ -294,14 +338,53 @@ const StoreOverview = () => {
 
                         {/* Column 3: Performance */}
                         <div className="space-y-3">
-                            <p className="text-sm font-medium text-gray-700">Today's Performance</p>
-                            <div>
-                                <div className="flex justify-between mb-2">
-                                    <span className="text-sm text-gray-500">Sales Target</span>
-                                    <span className="text-sm font-bold text-gray-900">0%</span>
-                                </div>
-                                <Progress value={0} className="h-2 bg-gray-100 [&>div]:bg-gray-900" />
+                            <div className="flex items-center justify-between">
+                                <p className="text-sm font-medium text-gray-700">Seller Performance (SVM)</p>
+                                {performanceData?.success && (
+                                    <Badge className={`
+                                        ${performanceData.tier === 'Excellent' ? 'bg-green-100 text-green-800' : ''}
+                                        ${performanceData.tier === 'Good' ? 'bg-blue-100 text-blue-800' : ''}
+                                        ${performanceData.tier === 'Average' ? 'bg-yellow-100 text-yellow-800' : ''}
+                                        ${performanceData.tier === 'Poor' ? 'bg-red-100 text-red-800' : ''}
+                                        ${performanceData.tier === 'New Seller' ? 'bg-gray-100 text-gray-800' : ''}
+                                        border-none hover:bg-opacity-100
+                                    `}>
+                                        {performanceData.tier}
+                                    </Badge>
+                                )}
                             </div>
+                            
+                            {performanceData?.success ? (
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-xs text-gray-500">Confidence Score</span>
+                                        <span className="text-sm font-bold text-gray-900">
+                                            {performanceData.confidence ? `${(performanceData.confidence * 100).toFixed(0)}%` : 'N/A'}
+                                        </span>
+                                    </div>
+                                    <Progress 
+                                        value={performanceData.confidence ? performanceData.confidence * 100 : 0} 
+                                        className={`h-2 bg-gray-100 ${
+                                            performanceData.tier === 'Excellent' ? '[&>div]:bg-green-600' : 
+                                            performanceData.tier === 'Good' ? '[&>div]:bg-blue-600' : 
+                                            performanceData.tier === 'Average' ? '[&>div]:bg-yellow-600' : 
+                                            performanceData.tier === 'New Seller' ? '[&>div]:bg-gray-400' : 
+                                            '[&>div]:bg-red-600'
+                                        }`} 
+                                    />
+                                    <p className="text-[10px] text-gray-400 mt-1 italic">
+                                        {performanceData.message || `Based on ${performanceData.metrics?.review_count || 0} customer reviews`}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="flex justify-between mb-2">
+                                        <span className="text-sm text-gray-500">Sales Target</span>
+                                        <span className="text-sm font-bold text-gray-900">0%</span>
+                                    </div>
+                                    <Progress value={0} className="h-2 bg-gray-100 [&>div]:bg-gray-900" />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </CardContent>

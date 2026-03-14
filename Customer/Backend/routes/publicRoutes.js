@@ -5,10 +5,47 @@ const Product = require('../models/Product');
 // Get all products
 router.get('/products', async (req, res) => {
     try {
-        console.log('Fetching products...');
-        const products = await Product.find({
-            status: { $nin: ['inactive', 'forced-inactive', 'Forced Inactive', 'Inactive'] }
-        });
+        console.log('Fetching products with ratings...');
+        // We use aggregation to join with the Reviews collection
+        const products = await Product.aggregate([
+            {
+                $match: {
+                    status: { $nin: ['inactive', 'forced-inactive', 'Forced Inactive', 'Inactive'] }
+                }
+            },
+            {
+                $addFields: {
+                    productIdString: { $toString: "$_id" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "Reviews",
+                    localField: "productIdString",
+                    foreignField: "productId",
+                    as: "reviews"
+                }
+            },
+            {
+                $addFields: {
+                    reviewCount: { $size: "$reviews" },
+                    averageRating: {
+                        $cond: [
+                            { $gt: [{ $size: "$reviews" }, 0] },
+                            { $avg: "$reviews.overallRate" },
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                $project: {
+                    reviews: 0,
+                    productIdString: 0
+                }
+            }
+        ]);
+
         console.log(`Found ${products.length} products`);
         res.json({ success: true, products });
     } catch (error) {
@@ -28,11 +65,49 @@ router.get('/products/:productId', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid product ID format' });
         }
 
-        const product = await Product.findById(productId);
+        const mongoose = require('mongoose');
+        const productStats = await Product.aggregate([
+            {
+                $match: { _id: new mongoose.Types.ObjectId(productId) }
+            },
+            {
+                $addFields: {
+                    productIdString: { $toString: "$_id" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "Reviews",
+                    localField: "productIdString",
+                    foreignField: "productId",
+                    as: "reviews"
+                }
+            },
+            {
+                $addFields: {
+                    reviewCount: { $size: "$reviews" },
+                    averageRating: {
+                        $cond: [
+                            { $gt: [{ $size: "$reviews" }, 0] },
+                            { $avg: "$reviews.overallRate" },
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                $project: {
+                    reviews: 0,
+                    productIdString: 0
+                }
+            }
+        ]);
 
-        if (!product) {
+        if (!productStats || productStats.length === 0) {
             return res.status(404).json({ success: false, message: 'Product not found' });
         }
+
+        const product = productStats[0];
 
         // Check if product is active
         if (['inactive', 'forced-inactive', 'Forced Inactive', 'Inactive'].includes(product.status)) {

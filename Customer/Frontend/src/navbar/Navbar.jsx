@@ -97,6 +97,13 @@ function Navbar() {
                                             >
                                                 My Orders
                                             </Link>
+                                            <Link
+                                                to="/grower-portal"
+                                                className="block px-4 py-2 text-sm border-t border-gray-100 font-medium text-green-700 hover:bg-green-50"
+                                                onClick={() => setIsMenuOpen(false)}
+                                            >
+                                                🌱 Sell Your Produce
+                                            </Link>
 
                                             <div className="border-t border-gray-100 mt-1">
                                                 <button

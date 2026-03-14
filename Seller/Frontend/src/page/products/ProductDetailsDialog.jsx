@@ -52,7 +52,7 @@ const ExpandableText = ({ text, limit = 150, className = "", clampLines = 2 }) =
     );
 };
 
-const ProductDetailsDialog = ({ open, onOpenChange, product }) => {
+const ProductDetailsDialog = ({ open, onOpenChange, product, performanceData }) => {
     const [copiedId, setCopiedId] = useState(false);
 
     if (!product) return null;
@@ -82,6 +82,17 @@ const ProductDetailsDialog = ({ open, onOpenChange, product }) => {
                                     <Badge variant={product.status === 'active' ? 'default' : 'secondary'}
                                         className={`whitespace-nowrap ${product.status === 'active' ? 'bg-green-500 hover:bg-green-600' : 'bg-gray-500'}`}>
                                         {product.status === 'active' ? 'Active' : 'Inactive'}
+                                    </Badge>
+                                )}
+                                {performanceData?.success && (
+                                    <Badge variant="outline" className={`whitespace-nowrap flex items-center gap-1 border-none shadow-sm
+                                        ${performanceData.tier === 'Excellent' ? 'bg-green-50 text-green-700' : 
+                                          performanceData.tier === 'Good' ? 'bg-blue-50 text-blue-700' : 
+                                          performanceData.tier === 'Average' ? 'bg-yellow-50 text-yellow-700' : 
+                                          performanceData.tier === 'Poor' ? 'bg-red-50 text-red-700' : 'bg-gray-50 text-gray-700'}
+                                    `}>
+                                        <BadgeCheck className="h-3 w-3" />
+                                        {performanceData.tier} Tier (AI Verified)
                                     </Badge>
                                 )}
                             </div>
@@ -260,50 +271,66 @@ const ProductDetailsDialog = ({ open, onOpenChange, product }) => {
                                         </AccordionContent>
                                     </AccordionItem>
 
-                                    {/* Seller Info */}
-                                    <AccordionItem value="seller">
-                                        <AccordionTrigger className="text-sm font-bold text-gray-900 hover:no-underline hover:text-blue-600">
-                                            <div className="flex items-center gap-2">
-                                                <Store className="h-4 w-4 text-blue-600" /> Seller Information
-                                            </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <div className="bg-gray-50 rounded-lg p-4 border border-gray-100 mt-1">
-                                                <div className="space-y-3">
-                                                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                                        <div className="flex items-center gap-3 w-full">
-                                                            <div className="bg-white p-2 rounded-full border shadow-sm shrink-0">
-                                                                <Store className="h-5 w-5 text-gray-600" />
-                                                            </div>
-                                                            <div className="min-w-0">
-                                                                <p className="font-semibold text-gray-900 truncate">{product.storeName || 'Unknown Store'}</p>
-                                                                <div className="flex items-center gap-1 text-sm text-gray-500">
-                                                                    <User className="h-3 w-3" /> {product.sellerName || 'Unknown Seller'}
-                                                                </div>
-                                                            </div>
+                                    {/* AI Performance Analysis (SVM) */}
+                                    {performanceData?.success && (
+                                        <AccordionItem value="performance" className="border-green-100">
+                                            <AccordionTrigger className="text-sm font-bold text-green-700 hover:no-underline hover:text-green-600">
+                                                <div className="flex items-center gap-2">
+                                                    <TrendingUp className="h-4 w-4 text-green-600" /> AI Performance Analysis
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="bg-green-50/30 rounded-lg p-4 border border-green-100 mt-1">
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] font-bold text-green-600 uppercase tracking-widest">Performance Tier</span>
+                                                            <span className="text-lg font-bold text-gray-900">{performanceData.tier}</span>
+                                                        </div>
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Confidence</span>
+                                                            <span className="text-lg font-bold text-green-600">{(performanceData.confidence * 100).toFixed(0)}%</span>
                                                         </div>
                                                     </div>
 
-                                                    <Separator className="bg-gray-200" />
-
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                                                        <div className="flex items-start gap-2 text-gray-600">
-                                                            <MapPin className="h-4 w-4 mt-0.5 shrink-0" />
-                                                            <div className="w-full">
-                                                                <ExpandableText text={product.storeAddress || 'No Address Available'} limit={50} />
+                                                    <div className="space-y-3">
+                                                        <div className="space-y-1">
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-600">Overall Satisfaction</span>
+                                                                <span className="font-bold text-gray-900">{performanceData.metrics?.overall.toFixed(1)}/5.0</span>
                                                             </div>
+                                                            <Progress value={(performanceData.metrics?.overall / 5) * 100} className="h-1.5 bg-gray-100 [&>div]:bg-green-500" />
                                                         </div>
-                                                        {product.sellerUniqueId && (
-                                                            <div className="flex items-center gap-2 text-gray-600">
-                                                                <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" />
-                                                                <span>Seller ID: <span className="font-mono bg-gray-100 px-1 rounded">{product.sellerUniqueId}</span></span>
+                                                        <div className="space-y-1">
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-600">Product Quality</span>
+                                                                <span className="font-bold text-gray-900">{performanceData.metrics?.quality.toFixed(1)}/5.0</span>
                                                             </div>
-                                                        )}
+                                                            <Progress value={(performanceData.metrics?.quality / 5) * 100} className="h-1.5 bg-gray-100 [&>div]:bg-blue-500" />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <div className="flex justify-between text-xs">
+                                                                <span className="text-gray-600">Delivery Reliability</span>
+                                                                <span className="font-bold text-gray-900">{performanceData.metrics?.delivery.toFixed(1)}/5.0</span>
+                                                            </div>
+                                                            <Progress value={(performanceData.metrics?.delivery / 5) * 100} className="h-1.5 bg-gray-100 [&>div]:bg-orange-500" />
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="mt-4 pt-3 border-t border-green-100/50 flex items-center justify-between">
+                                                        <span className="text-[10px] text-gray-400 italic">Based on {performanceData.metrics?.review_count} verified reviews</span>
+                                                        <Button 
+                                                            variant="ghost" 
+                                                            size="sm" 
+                                                            className="h-7 text-green-700 hover:text-green-800 hover:bg-green-100 p-0 px-2 text-[10px] font-bold"
+                                                            onClick={() => window.location.href = '/svm-analysis'}
+                                                        >
+                                                            VIEW FULL REPORT
+                                                        </Button>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    )}
                                 </Accordion>
 
                                 {/* Product Meta */}

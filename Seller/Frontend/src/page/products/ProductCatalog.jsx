@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/ui/card';
 import { Button } from '@/ui/button';
-import { Plus, Package, Search, Eye, Star, Download, UploadCloud, Trash2, AlertTriangle } from 'lucide-react'; // Added AlertTriangle
+import { Plus, Package, Search, Eye, Star, Download, UploadCloud, Trash2, AlertTriangle, TrendingUp, BadgeCheck } from 'lucide-react'; // Added AlertTriangle, BadgeCheck
 import { useNavigate } from 'react-router-dom';
 import { Input } from '@/ui/input';
+import { Badge } from '@/ui/badge';
 import ProductDetailsDialog from './ProductDetailsDialog';
 import ProductImageSlider from './ProductImageSlider';
 import ProductReviewsDialog from './ProductReviewsDialog';
@@ -123,6 +124,19 @@ const ProductCatalog = () => {
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
     const [deleteAllConfirmation, setDeleteAllConfirmation] = useState("");
+    const [performanceData, setPerformanceData] = useState(null);
+
+    const fetchPerformance = async (sellerId) => {
+        try {
+            const res = await fetch(`http://localhost:6002/evaluate/${sellerId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setPerformanceData(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch performance evaluation", error);
+        }
+    };
 
     useEffect(() => {
         const fetchProducts = async () => {
@@ -156,10 +170,14 @@ const ProductCatalog = () => {
                     return;
                 }
 
-                const response = await fetch(`${import.meta.env.VITE_API_URL}/products/seller/${uniqueId}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setProducts(data);
+                if (uniqueId) {
+                    const response = await fetch(`${import.meta.env.VITE_API_URL}/products/seller/${uniqueId}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        setProducts(data);
+                    }
+                    // Fetch SVM Performance
+                    fetchPerformance(uniqueId);
                 }
             } catch (error) {
                 console.error("Failed to load products", error);
@@ -466,6 +484,51 @@ const ProductCatalog = () => {
                 </div>
             </div>
 
+            {/* SVM Performance Banner */}
+            {performanceData?.success && (
+                <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-none shadow-sm overflow-hidden">
+                    <CardContent className="p-4 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white rounded-xl shadow-sm">
+                                <TrendingUp className={`h-6 w-6 ${
+                                    performanceData.tier === 'Excellent' ? 'text-green-600' : 
+                                    performanceData.tier === 'Good' ? 'text-blue-600' : 
+                                    performanceData.tier === 'Average' ? 'text-yellow-600' : 
+                                    performanceData.tier === 'New Seller' ? 'text-gray-400' : 'text-red-600'
+                                }`} />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-bold text-gray-900">Seller Performance Tier</h3>
+                                    <Badge className={`
+                                        ${performanceData.tier === 'Excellent' ? 'bg-green-600 hover:bg-green-700' : ''}
+                                        ${performanceData.tier === 'Good' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                                        ${performanceData.tier === 'Average' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
+                                        ${performanceData.tier === 'Poor' ? 'bg-red-600 hover:bg-red-700' : ''}
+                                        ${performanceData.tier === 'New Seller' ? 'bg-gray-400 hover:bg-gray-500' : ''}
+                                        border-none text-white
+                                    `}>
+                                        {performanceData.tier}
+                                    </Badge>
+                                </div>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                    Confidence Score: <span className="font-semibold text-gray-700">{((performanceData.confidence || 0) * 100).toFixed(0)}%</span> • 
+                                    Based on <span className="font-semibold text-gray-700">{performanceData.metrics?.review_count || 0} reviews</span>
+                                </p>
+                            </div>
+                        </div>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-white/50 hover:bg-white"
+                            onClick={() => fetchPerformance(performanceData.seller_id)}
+                        >
+                            Refresh Analysis
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Search & Filter */}
             <div className="flex items-center gap-2 bg-white p-2 rounded-lg border shadow-sm max-w-md">
                 <Search className="h-5 w-5 text-gray-400 ml-2" />
@@ -505,7 +568,46 @@ const ProductCatalog = () => {
                                         <h3 className="font-semibold text-lg text-gray-900 line-clamp-1">{product.productName}</h3>
                                         <span className="font-bold text-green-600">₹{product.sellingPrice}</span>
                                     </div>
-                                    <p className="text-sm text-gray-500 line-clamp-2 mb-4 flex-1">{product.description}</p>
+                                    <p className="text-sm text-gray-500 line-clamp-2 mb-2 flex-1">{product.description}</p>
+
+                                    {performanceData?.success && (
+                                        <div 
+                                            className="flex flex-col gap-1 mb-4 p-2 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-100 cursor-pointer hover:border-green-200 transition-colors"
+                                            onClick={() => navigate('/svm-analysis')}
+                                            title="Click for full AI Performance Analysis"
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">AI Performance</span>
+                                                <BadgeCheck className={`h-3.5 w-3.5 ${
+                                                    performanceData.tier === 'Excellent' ? 'text-green-600' : 
+                                                    performanceData.tier === 'Good' ? 'text-blue-600' : 
+                                                    performanceData.tier === 'Average' ? 'text-yellow-600' : 'text-red-600'
+                                                }`} />
+                                            </div>
+                                            <div className="flex items-center justify-between mt-1">
+                                                <span className={`text-xs font-bold ${
+                                                    performanceData.tier === 'Excellent' ? 'text-green-700' : 
+                                                    performanceData.tier === 'Good' ? 'text-blue-700' : 
+                                                    performanceData.tier === 'Average' ? 'text-yellow-700' : 'text-red-700'
+                                                }`}>
+                                                    {performanceData.tier} Tier
+                                                </span>
+                                                <span className="text-[10px] text-gray-500 font-medium">
+                                                    {(performanceData.confidence * 100).toFixed(0)}% Confidence
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-gray-100 h-1 rounded-full mt-1 overflow-hidden">
+                                                <div 
+                                                    className={`h-full transition-all duration-1000 ${
+                                                        performanceData.tier === 'Excellent' ? 'bg-green-500' : 
+                                                        performanceData.tier === 'Good' ? 'bg-blue-500' : 
+                                                        performanceData.tier === 'Average' ? 'bg-yellow-500' : 'bg-red-500'
+                                                    }`}
+                                                    style={{ width: `${performanceData.confidence * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
 
 
                                     <div className="flex items-center justify-between gap-2 mb-4">
@@ -591,6 +693,7 @@ const ProductCatalog = () => {
                 open={isDetailsOpen}
                 onOpenChange={setIsDetailsOpen}
                 product={selectedProduct}
+                performanceData={performanceData}
             />
 
             <ProductReviewsDialog

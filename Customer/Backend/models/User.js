@@ -10,6 +10,7 @@ const userSchema = new mongoose.Schema({
     role: { type: String, enum: ['customer'], default: 'customer' },
     isVerified: { type: Boolean, default: false },
     createdAt: { type: Date, default: Date.now },
+    walletBalance: { type: Number, default: 0 },
     // addresses will be stored in separate collection (Customer DB)
 });
 

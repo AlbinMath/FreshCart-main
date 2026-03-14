@@ -83,11 +83,47 @@ router.get('/flash-sale-products/:saleId', async (req, res) => {
         const mongoose = require('mongoose');
         const saleObjectId = new mongoose.Types.ObjectId(saleId);
 
-        const products = await Product.find({
-            activeFlashSale: saleObjectId,
-            flashSalePrice: { $exists: true, $gt: 0 },
-            status: { $nin: ['inactive', 'forced-inactive', 'Inactive', 'Forced Inactive'] }
-        });
+        // Find all products enrolled in this sale with ratings using aggregation
+        const products = await Product.aggregate([
+            {
+                $match: {
+                    activeFlashSale: saleObjectId,
+                    flashSalePrice: { $exists: true, $gt: 0 },
+                    status: { $nin: ['inactive', 'forced-inactive', 'Inactive', 'Forced Inactive'] }
+                }
+            },
+            {
+                $addFields: {
+                    productIdString: { $toString: "$_id" }
+                }
+            },
+            {
+                $lookup: {
+                    from: "Reviews",
+                    localField: "productIdString",
+                    foreignField: "productId",
+                    as: "reviews"
+                }
+            },
+            {
+                $addFields: {
+                    reviewCount: { $size: "$reviews" },
+                    averageRating: {
+                        $cond: [
+                            { $gt: [{ $size: "$reviews" }, 0] },
+                            { $avg: "$reviews.overallRate" },
+                            0
+                        ]
+                    }
+                }
+            },
+            {
+                $project: {
+                    reviews: 0,
+                    productIdString: 0
+                }
+            }
+        ]);
 
         res.json({ sale, products });
     } catch (error) {

@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { User, Store, Bell } from 'lucide-react';
+import { User, Store, Bell, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import NotificationDialog from './NotificationDialog';
-import { Toaster, toast } from 'sonner';
+import { toast } from 'sonner';
 
 const DashboardHeader = () => {
     const [storeName, setStoreName] = useState('My Store');
     const [managerName, setManagerName] = useState('Store Manager');
     const [notifications, setNotifications] = useState([]);
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [performanceData, setPerformanceData] = useState(null);
     const socketRef = useRef(null);
 
     // Initial Load & Socket Connection
@@ -26,6 +27,25 @@ const DashboardHeader = () => {
                     setStoreName(sellerInfo.storeName);
                     setManagerName(sellerInfo.name || 'Store Manager');
                     sellerId = sellerInfo._id || sellerInfo.sellerId;
+                }
+
+                // Fetch Performance Evaluation (SVM)
+                const fetchPerformance = async (id) => {
+                    try {
+                        const res = await fetch(`http://localhost:6002/evaluate/${id}`);
+                        if (res.ok) {
+                            const data = await res.json();
+                            setPerformanceData(data);
+                        }
+                    } catch (error) {
+                        console.error("Failed to fetch performance evaluation", error);
+                    }
+                };
+
+                if (sellerInfo.user?.sellerUniqueId) {
+                    fetchPerformance(sellerInfo.user.sellerUniqueId);
+                } else if (sellerId) {
+                    fetchPerformance(sellerId);
                 }
             }
         } catch (e) {
@@ -77,8 +97,6 @@ const DashboardHeader = () => {
 
     return (
         <header className="h-16 bg-white border-b flex items-center justify-between px-6 sticky top-0 z-30 ml-64">
-            {/* Include Toaster for notifications */}
-            <Toaster position="top-right" />
 
             <div className="flex flex-col">
                 <span className="text-sm text-gray-500">Welcome back,</span>
@@ -101,6 +119,29 @@ const DashboardHeader = () => {
                         </span>
                     )}
                 </button>
+
+                {/* SVM Performance Badge */}
+                {performanceData?.success && (
+                    <Link to="/reports" className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-lg border border-green-100 hover:bg-white transition-all shadow-sm group">
+                        <TrendingUp className={`h-4 w-4 ${
+                            performanceData.tier === 'Excellent' ? 'text-green-600' : 
+                            performanceData.tier === 'Good' ? 'text-blue-600' : 
+                            performanceData.tier === 'Average' ? 'text-yellow-600' : 
+                            performanceData.tier === 'New Seller' ? 'text-gray-400' : 'text-red-600'
+                        }`} />
+                        <div className="flex flex-col text-left">
+                            <span className="text-[9px] font-bold text-gray-400 uppercase leading-none">AI Tier</span>
+                            <span className={`text-[10px] font-bold uppercase leading-tight ${
+                                performanceData.tier === 'Excellent' ? 'text-green-700' : 
+                                performanceData.tier === 'Good' ? 'text-blue-700' : 
+                                performanceData.tier === 'Average' ? 'text-yellow-700' : 
+                                performanceData.tier === 'New Seller' ? 'text-gray-500' : 'text-red-700'
+                            }`}>
+                                {performanceData.tier}
+                            </span>
+                        </div>
+                    </Link>
+                )}
 
                 <Link to="/profile" className="flex items-center gap-3 bg-gray-50 px-3 py-1.5 rounded-full border hover:bg-gray-100 transition-colors">
                     <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center text-green-600">

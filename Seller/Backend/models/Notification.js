@@ -1,38 +1,39 @@
 const mongoose = require('mongoose');
-
-// Connect to the Products database (as requested for storing notifications)
-const productDB = mongoose.createConnection(process.env.MONGODB_URI_Products);
+const { usersConn } = require('../config/db');
 
 const notificationSchema = new mongoose.Schema({
     sellerId: {
-        type: String, // Storing as String to match how other IDs are often handled, or ObjectId if robust
+        type: mongoose.Schema.Types.ObjectId,
         required: true,
-        index: true
+        ref: 'Seller'
     },
     productId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'products' // Optional ref, but good for population if needed
+        ref: 'products',
+        required: false
     },
-    type: {
-        type: String, // e.g., 'low_stock'
-        default: 'low_stock'
+    title: {
+        type: String,
+        required: false
     },
     message: {
         type: String,
         required: true
     },
+    type: {
+        type: String,
+        enum: ['info', 'success', 'warning', 'error', 'low_stock'],
+        default: 'info'
+    },
     isRead: {
         type: Boolean,
         default: false
     },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-        expires: 60 * 60 * 24 * 30 // Optional: Auto-delete after 30 days? Let's leave it per user request "CLEAR BUTTON". Maybe no expiry.
+    metadata: {
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
     }
-}, {
-    timestamps: true,
-    collection: 'notifications'
-});
+}, { timestamps: true });
 
-module.exports = productDB.model('notifications', notificationSchema);
+// Use usersConn to ensure it's in the same DB as the Admin's notifications
+module.exports = usersConn.models.Notification || usersConn.model('Notification', notificationSchema);

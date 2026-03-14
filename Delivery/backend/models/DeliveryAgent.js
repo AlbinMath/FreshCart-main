@@ -20,7 +20,10 @@ const deliveryAgentSchema = new mongoose.Schema({
         lat: { type: Number },
         lng: { type: Number },
         lastUpdated: { type: Date }
-    }
+    },
+    lastOnlineAt: { type: Date },
+    lastOnlineResetDate: { type: String }, // "YYYY-MM-DD"
+    onlineMinsToday: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Deliveryagent', deliveryAgentSchema, 'Deliveryagent');

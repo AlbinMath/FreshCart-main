@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const PaymentDetail = require('../models/PaymentDetail');
+const { encrypt, decrypt, maskData } = require('../utils/encryption');
 
 // Create or Update User (Sync from Firebase)
 router.post('/sync', async (req, res) => {
@@ -52,9 +54,103 @@ router.get('/:uid', async (req, res) => {
         const addresses = await Address.find({ uid: req.params.uid });
         user.addresses = addresses;
 
+        // Fetch payment details (masked by default)
+        const paymentDetails = await PaymentDetail.find({ uid: req.params.uid });
+        user.paymentDetails = paymentDetails.map(pd => {
+            const decryptedDetails = JSON.parse(decrypt(pd.details, pd.iv));
+            const masked = {};
+            for (const key in decryptedDetails) {
+                masked[key] = maskData(decryptedDetails[key]);
+            }
+            return {
+                _id: pd._id,
+                type: pd.type,
+                details: masked,
+                isDefault: pd.isDefault,
+                createdAt: pd.createdAt
+            };
+        });
+
         res.json({ success: true, user });
     } catch (error) {
         console.error('Error fetching user:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Add or Update Payment Detail
+router.post('/payment-detail', async (req, res) => {
+    try {
+        const { uid, type, details, isDefault } = req.body;
+        
+        if (!uid || !type || !details) {
+            return res.status(400).json({ success: false, message: 'Missing required fields' });
+        }
+
+        // Encrypt the details
+        const detailsString = JSON.stringify(details);
+        const { encryptedData, iv } = encrypt(detailsString);
+
+        if (isDefault) {
+            await PaymentDetail.updateMany({ uid }, { $set: { isDefault: false } });
+        }
+
+        const newPaymentDetail = new PaymentDetail({
+            uid,
+            type,
+            details: encryptedData,
+            iv,
+            isDefault: !!isDefault
+        });
+
+        await newPaymentDetail.save();
+
+        res.json({ 
+            success: true, 
+            message: 'Payment detail added successfully',
+            paymentDetail: {
+                _id: newPaymentDetail._id,
+                type: newPaymentDetail.type,
+                isDefault: newPaymentDetail.isDefault
+            }
+        });
+    } catch (error) {
+        console.error('Error adding payment detail:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get Decrypted Payment Detail (Security required in production, here we provide it for the requested "Show" feature)
+router.get('/payment-detail/reveal/:id', async (req, res) => {
+    try {
+        const { uid } = req.query;
+        const pd = await PaymentDetail.findById(req.params.id);
+
+        if (!pd) return res.status(404).json({ success: false, message: 'Not found' });
+        if (pd.uid !== uid) return res.status(403).json({ success: false, message: 'Unauthorized' });
+
+        const decryptedDetails = JSON.parse(decrypt(pd.details, pd.iv));
+        
+        res.json({ success: true, details: decryptedDetails });
+    } catch (error) {
+        console.error('Error revealing payment detail:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Delete Payment Detail
+router.delete('/payment-detail/:id', async (req, res) => {
+    try {
+        const { uid } = req.query;
+        const pd = await PaymentDetail.findById(req.params.id);
+
+        if (!pd) return res.status(404).json({ success: false, message: 'Not found' });
+        if (pd.uid !== uid) return res.status(403).json({ success: false, message: 'Unauthorized' });
+
+        await PaymentDetail.findByIdAndDelete(req.params.id);
+        res.json({ success: true, message: 'Payment detail deleted' });
+    } catch (error) {
+        console.error('Error deleting payment detail:', error);
         res.status(500).json({ success: false, message: 'Server error' });
     }
 });
@@ -156,6 +252,35 @@ router.put('/address/:id', async (req, res) => {
     } catch (error) {
         console.error('Error updating address:', error);
         res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Geolocation Proxy (to avoid CORS)
+const axios = require('axios');
+
+router.get('/geolocation/reverse', async (req, res) => {
+    try {
+        const { lat, lon } = req.query;
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`, {
+            headers: { 'User-Agent': 'FreshCart-App/1.0' }
+        });
+        res.json({ success: true, data: response.data });
+    } catch (error) {
+        console.error('Geo reverse error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch location details' });
+    }
+});
+
+router.get('/geolocation/search', async (req, res) => {
+    try {
+        const { q } = req.query;
+        const response = await axios.get(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`, {
+            headers: { 'User-Agent': 'FreshCart-App/1.0' }
+        });
+        res.json({ success: true, data: response.data });
+    } catch (error) {
+        console.error('Geo search error:', error);
+        res.status(500).json({ success: false, message: 'Failed to fetch coordinates' });
     }
 });
 

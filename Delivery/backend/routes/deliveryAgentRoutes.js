@@ -12,6 +12,7 @@ const Customer = require('../models/Customer');
 const Product = require('../models/Product');
 const Review = require('../models/Review');
 const IDSCluster = require('../models/IDSCluster');
+const DeliveryWithdrawalRequest = require('../models/DeliveryWithdrawalRequest');
 
 const router = express.Router();
 
@@ -647,11 +648,33 @@ router.post('/check-user', async (req, res) => {
 router.put('/status/:agentId', async (req, res) => {
     try {
         const { isOnline } = req.body;
-        const agent = await DeliveryAgent.findByIdAndUpdate(
-            req.params.agentId,
-            { isOnline },
-            { new: true }
-        );
+        const agent = await DeliveryAgent.findById(req.params.agentId);
+        if (!agent) return res.status(404).json({ message: 'Agent not found' });
+
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        
+        // Reset onlineMinsToday if it's a new day
+        if (agent.lastOnlineResetDate !== today) {
+            agent.onlineMinsToday = 0;
+            agent.lastOnlineResetDate = today;
+        }
+
+        if (isOnline) {
+            // Going Online
+            agent.lastOnlineAt = now;
+            agent.isOnline = true;
+        } else {
+            // Going Offline
+            if (agent.isOnline && agent.lastOnlineAt) {
+                const diffMs = now - agent.lastOnlineAt;
+                const diffMins = Math.floor(diffMs / 60000);
+                agent.onlineMinsToday += diffMins;
+            }
+            agent.isOnline = false;
+        }
+
+        await agent.save();
         res.json(agent);
     } catch (err) {
         res.status(500).json({ message: err.message });
@@ -757,11 +780,56 @@ router.get('/stats/:agentId', async (req, res) => {
             ? (reviews.reduce((sum, r) => sum + (r.deliveryRate || 0), 0) / reviews.length).toFixed(1)
             : "0.0";
 
+        // 3. Earnings for Today
+        const todayDeliveredOrders = await Order.find({
+            deliveryAgentId: agentId,
+            status: 'Delivered',
+            updatedAt: { $gte: startOfDay }
+        });
+
+        let todayEarnings = 0;
+        todayDeliveredOrders.forEach(order => {
+            let deliveryCharge = 0;
+            if (order.taxDetails && order.taxDetails.breakdown && order.taxDetails.breakdown.delivery) {
+                deliveryCharge = order.taxDetails.breakdown.delivery.value || 0;
+            } else if (order.deliveryFee) {
+                deliveryCharge = order.deliveryFee;
+            }
+            todayEarnings += (deliveryCharge > 0 ? deliveryCharge : 40);
+        });
+
+        // 4. Online Time Stats
+        const agent = await DeliveryAgent.findById(agentId);
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+
+        // Reset onlineMinsToday if it's a new day
+        if (agent.lastOnlineResetDate !== todayStr) {
+            agent.onlineMinsToday = 0;
+            agent.lastOnlineResetDate = todayStr;
+            // If they are online, we reset the start time to today at 00:00 or just 'now'
+            if (agent.isOnline) {
+                agent.lastOnlineAt = now;
+            }
+            await agent.save();
+        }
+
+        let totalOnlineMins = agent.onlineMinsToday || 0;
+        
+        // If currently online, add the time since lastOnlineAt
+        if (agent.isOnline && agent.lastOnlineAt) {
+            const sessionMs = now - agent.lastOnlineAt;
+            // Alternative: use total seconds and let frontend format
+            totalOnlineMins += (sessionMs / 60000); 
+        }
+
         res.json({
             assigned: assignedCount,
             completed: completedCount,
             averageRating: avgRating,
-            totalReviews: reviews.length
+            totalReviews: reviews.length,
+            onlineMins: Math.round(totalOnlineMins), // Round the final sum
+            todayEarnings: todayEarnings
         });
     } catch (err) {
         console.error("Error fetching agent stats:", err);
@@ -802,6 +870,158 @@ router.get('/product/:id', async (req, res) => {
     } catch (error) {
         console.error('Error fetching product:', error);
         res.status(500).json({ message: 'Server error fetching product' });
+    }
+});
+
+// Get Agent Earnings
+router.get('/earnings/:agentId', async (req, res) => {
+    try {
+        const { agentId } = req.params;
+
+        // Find all delivered orders for this agent
+        const deliveredOrders = await Order.find({
+            deliveryAgentId: agentId,
+            status: 'Delivered'
+        }).sort({ updatedAt: -1 });
+
+        let totalEarnings = 0;
+        let basePay = 0;
+        let distancePay = 0;
+        let surgePay = 0;
+        let tips = 0;
+        let incentives = 0;
+
+        const transactions = deliveredOrders.map(order => {
+            // Extract delivery fee from taxDetails if present
+            // Based on Customer project logic: taxDetails.breakdown.delivery.value
+            let deliveryCharge = 0;
+            if (order.taxDetails && order.taxDetails.breakdown && order.taxDetails.breakdown.delivery) {
+                deliveryCharge = order.taxDetails.breakdown.delivery.value || 0;
+            } else if (order.deliveryFee) {
+                // Fallback for older orders or different schemas
+                deliveryCharge = order.deliveryFee;
+            }
+
+            // For now, let's assume 100% of delivery charge goes to agent
+            // You can adjust this logic (e.g. fixed 40 per delivery + 10 incentive)
+            // But usually 'earnings' is what they are paid.
+            
+            // If deliveryCharge is missing or 0 (Free delivery), give a base pay of 40
+            const earningForThisOrder = deliveryCharge > 0 ? deliveryCharge : 40;
+            
+            totalEarnings += earningForThisOrder;
+            basePay += earningForThisOrder; // Simplified for now
+
+            return {
+                orderId: order.orderId || order._id,
+                amount: earningForThisOrder,
+                date: order.updatedAt || order.createdAt,
+                status: 'Completed',
+                type: 'Delivery Fee'
+            };
+        });
+
+        // Calculate already withdrawn or pending amount
+        const withdrawals = await DeliveryWithdrawalRequest.find({
+            agentId,
+            status: { $in: ['Approved', 'Pending'] }
+        });
+
+        const approvedWithdrawn = withdrawals.filter(w => w.status === 'Approved').reduce((sum, w) => sum + w.amount, 0);
+        const pendingWithdrawals = withdrawals.filter(w => w.status === 'Pending').reduce((sum, w) => sum + w.amount, 0);
+        const totalLocked = approvedWithdrawn + pendingWithdrawals;
+        const availableBalance = totalEarnings - totalLocked;
+
+        res.json({
+            success: true,
+            balance: availableBalance,
+            totalEarnings: totalEarnings,
+            totalWithdrawn: approvedWithdrawn,
+            pendingWithdrawals: pendingWithdrawals,
+            breakdown: {
+                basePay
+            },
+            transactions: transactions.slice(0, 20) // Latest 20
+        });
+
+    } catch (err) {
+        console.error("Error fetching agent earnings:", err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get Agent Profile
+router.get('/profile/:agentId', async (req, res) => {
+    try {
+        const agent = await DeliveryAgent.findById(req.params.agentId);
+        if (!agent) return res.status(404).json({ message: 'Agent not found' });
+        res.json(agent);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Update Bank Profile
+router.put('/profile/bank-details/:agentId', async (req, res) => {
+    try {
+        const { bankAccountNumber, ifscCode, upiId, accountHolderName } = req.body;
+        const agent = await DeliveryAgent.findByIdAndUpdate(
+            req.params.agentId,
+            { bankAccountNumber, ifscCode, upiId, accountHolderName },
+            { new: true }
+        );
+        res.json({ success: true, agent });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Create Withdrawal Request
+router.post('/withdrawal/request', async (req, res) => {
+    try {
+        const { agentId, amount } = req.body;
+        const agent = await DeliveryAgent.findById(agentId);
+        if (!agent) return res.status(404).json({ message: 'Agent not found' });
+
+        // Check for existing pending request
+        const existingPending = await DeliveryWithdrawalRequest.findOne({ 
+            agentId, 
+            status: 'Pending' 
+        });
+
+        if (existingPending) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Next withdrawal can start after the administrator has processed your current request.' 
+            });
+        }
+
+        const request = new DeliveryWithdrawalRequest({
+            agentId,
+            agentName: agent.fullName,
+            amount,
+            bankDetails: {
+                accountHolderName: agent.accountHolderName,
+                accountNumber: agent.bankAccountNumber,
+                ifscCode: agent.ifscCode,
+                upiId: agent.upiId
+            }
+        });
+
+        await request.save();
+        res.json({ success: true, request });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Get Withdrawal History for Agent
+router.get('/withdrawal/history/:agentId', async (req, res) => {
+    try {
+        const history = await DeliveryWithdrawalRequest.find({ agentId: req.params.agentId }).sort({ createdAt: -1 });
+        res.json({ success: true, history });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
 });
 

@@ -509,9 +509,9 @@ export default function OrderSuccess() {
                             </button>
                         )}
 
-                        {order.status?.toLowerCase() === 'delivered' && (
+                        {(order.status?.toLowerCase() === 'delivered' || order.status?.toLowerCase() === 'placed') && (
                             <Link
-                                to={`/rate-order/${orderId}`}
+                                to={`/rate-order/${order._id}`}
                                 className="block w-full bg-yellow-500 text-white py-3 px-6 rounded-lg font-medium hover:bg-yellow-600 transition text-center flex items-center justify-center gap-2"
                             >
                                 <span className="text-xl">★</span>

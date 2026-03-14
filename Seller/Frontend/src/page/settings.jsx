@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/ui/card';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/ui/button';
-import { Fingerprint, Loader2, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Fingerprint, Loader2, CheckCircle, ShieldAlert, KeyRound, User, Zap, Ticket, BarChart2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/ui/alert';
 
 const Settings = () => {
@@ -9,6 +10,7 @@ const Settings = () => {
     const [loading, setLoading] = useState(false);
     const [generatedId, setGeneratedId] = useState(null);
     const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     useEffect(() => {
         const fetchSettingsData = async () => {
@@ -145,6 +147,89 @@ const Settings = () => {
                         </div>
                     )}
 
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <KeyRound className="h-5 w-5 text-blue-600" />
+                        Account & Business Tools
+                    </CardTitle>
+                    <CardDescription>
+                        Quick access to your account security, profile, and marketing management tools.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => navigate('/update-password')} 
+                        className="flex items-center gap-3 h-16 justify-start px-4 hover:border-blue-400 hover:bg-blue-50 transition-all border-dashed"
+                    >
+                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                            <KeyRound className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                            <p className="font-semibold text-sm">Update Password</p>
+                            <p className="text-xs text-gray-500">Secure your account</p>
+                        </div>
+                    </Button>
+
+                    <Button 
+                        variant="outline" 
+                        onClick={() => navigate('/profile', { state: { isEditing: true } })} 
+                        className="flex items-center gap-3 h-16 justify-start px-4 hover:border-green-400 hover:bg-green-50 transition-all border-dashed"
+                    >
+                        <div className="p-2 bg-green-100 rounded-lg text-green-600">
+                            <User className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                            <p className="font-semibold text-sm">Edit Profile</p>
+                            <p className="text-xs text-gray-500">Update business info</p>
+                        </div>
+                    </Button>
+
+                    <Button 
+                        variant="outline" 
+                        onClick={() => navigate('/marketing', { state: { activeTab: 'flash-sales' } })} 
+                        className="flex items-center gap-3 h-16 justify-start px-4 hover:border-orange-400 hover:bg-orange-50 transition-all border-dashed"
+                    >
+                        <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                            <Zap className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                            <p className="font-semibold text-sm">Flash Sales</p>
+                            <p className="text-xs text-gray-500">Manage live events</p>
+                        </div>
+                    </Button>
+
+                    <Button 
+                        variant="outline" 
+                        onClick={() => navigate('/marketing', { state: { activeTab: 'coupons' } })} 
+                        className="flex items-center gap-3 h-16 justify-start px-4 hover:border-red-400 hover:bg-red-50 transition-all border-dashed"
+                    >
+                        <div className="p-2 bg-red-100 rounded-lg text-red-600">
+                            <Ticket className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                            <p className="font-semibold text-sm">Coupons</p>
+                            <p className="text-xs text-gray-500">Discount codes</p>
+                        </div>
+                    </Button>
+
+                    <Button 
+                        variant="outline" 
+                        onClick={() => navigate('/reports')} 
+                        className="flex items-center gap-3 h-16 justify-start px-4 hover:border-indigo-400 hover:bg-indigo-50 transition-all border-dashed"
+                    >
+                        <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600">
+                            <BarChart2 className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                            <p className="font-semibold text-sm">Reports & Analytics</p>
+                            <p className="text-xs text-gray-500">View performance</p>
+                        </div>
+                    </Button>
                 </CardContent>
             </Card>
         </div>

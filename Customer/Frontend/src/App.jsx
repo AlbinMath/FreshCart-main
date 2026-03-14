@@ -17,6 +17,7 @@ import ProductDetails from "./Pages/ProductDetails";
 import ReportIssue from "./Pages/ReportIssue";
 import PremiumPlans from "./Pages/PremiumPlans";
 import FlashSalePage from "./Pages/FlashSalePage";
+import GrowerPortal from "./Pages/GrowerPortal";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import Layout from "./Layout";
 import Loading from "./components/Loading";
@@ -68,6 +69,7 @@ function AppContent() {
                 <Route path="/report-issue" element={<ReportIssue />} />
                 <Route path="/premium-plans" element={<PremiumPlans />} />
                 <Route path="/flash-sale/:saleId" element={<FlashSalePage />} />
+                <Route path="/grower-portal" element={<GrowerPortal />} />
             </Route>
         </Routes>
     );

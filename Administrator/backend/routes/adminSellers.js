@@ -12,6 +12,18 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Get single seller details
+router.get('/:id', async (req, res) => {
+    try {
+        const Seller = require('../models/Seller');
+        const seller = await Seller.findById(req.params.id);
+        if (!seller) return res.status(404).json({ message: 'Seller not found' });
+        res.json(seller);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Create a mock seller (for testing/logic building)
 router.post('/', async (req, res) => {
     try {

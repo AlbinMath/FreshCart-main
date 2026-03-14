@@ -24,6 +24,10 @@ const connectDB = async () => {
     }
 };
 
+const { usersConn } = require('./config/db');
+
+module.exports = { usersConn };
+
 // Routes
 app.get('/', (req, res) => {
     res.send('Seller Backend API is running...');
@@ -41,6 +45,8 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', require('./routes/notification'));
 app.use('/api/marketing', require('./routes/marketing'));
+app.use('/api/sourcing', require('./routes/sourcingRoutes'));
+app.use('/api/withdrawals', require('./routes/withdrawal'));
 
 // Start Server
 connectDB().then(() => {

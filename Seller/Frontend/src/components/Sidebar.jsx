@@ -10,7 +10,8 @@ import {
     Settings,
     Bell,
     LogOut,
-    Megaphone
+    Megaphone,
+    BrainCircuit
 } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { cn } from '@/ui/utils';
@@ -63,6 +64,7 @@ const Sidebar = ({ className }) => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Store Overview', path: '/' },
         { icon: Package, label: 'Product Catalog', path: '/products' },
+        { icon: Box, label: 'Source Local', path: '/sourcing' },
         {
             icon: ShoppingCart,
             label: 'Order Processing',
@@ -70,6 +72,7 @@ const Sidebar = ({ className }) => {
             badge: pendingOrdersCount > 0 ? pendingOrdersCount : null,
             badgeColor: 'bg-red-500'
         },
+        { icon: BrainCircuit, label: 'AI Performance', path: '/svm-analysis' },
         { icon: Megaphone, label: 'Marketing', path: '/marketing' },
         { icon: FileText, label: 'Reports', path: '/reports' },
         { icon: Settings, label: 'Store Settings', path: '/settings' },
@@ -120,13 +123,7 @@ const Sidebar = ({ className }) => {
                     className="w-full justify-start text-gray-700 hover:bg-gray-100 hover:text-gray-900 px-3"
                     onClick={() => setIsNotificationsOpen(true)}
                 >
-                    <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3">
-                            <Bell className="h-5 w-5" />
-                            <span>Notifications</span>
-                        </div>
-                        <span className="bg-red-500 px-2 py-0.5 rounded-full text-xs text-white">4</span>
-                    </div>
+
                 </Button>
 
                 <Button

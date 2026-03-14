@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Seller = require('../models/Seller');
+const Notification = require('../models/Notification');
 const jwt = require('jsonwebtoken');
 
 // Generate JWT Token
@@ -84,6 +85,18 @@ router.post('/register', async (req, res) => {
                 role: seller.role,
                 token: generateToken(seller._id),
             });
+
+            // Notify Administrator
+            try {
+                await Notification.create({
+                    title: 'New Seller Registration',
+                    message: `A new seller, "${name}" (${storeName}), has registered on the platform.`,
+                    type: 'info',
+                    metadata: { sellerId: seller._id, email }
+                });
+            } catch (nError) {
+                console.error('Failed to create notification:', nError);
+            }
         } else {
             res.status(400).json({ message: 'Invalid seller data' });
         }

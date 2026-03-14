@@ -46,6 +46,7 @@ router.get('/seller/:sellerId', async (req, res) => {
                     sellerId,
                     productId: p._id,
                     type: 'low_stock',
+                    title: 'Low Stock Alert',
                     message: `Low Stock Alert: ${p.productName} is down to ${p.stockQuantity} ${p.unit}.`,
                     isRead: false
                 });

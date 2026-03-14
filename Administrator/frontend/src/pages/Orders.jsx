@@ -130,14 +130,24 @@ const Orders = () => {
                                 orders
                                     .filter(order => {
                                         const matchesSearch =
-                                            order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                            (order.orderId || order._id).toLowerCase().includes(searchTerm.toLowerCase()) ||
                                             (order.shippingAddress?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
                                         const matchesStatus = filterStatus === 'all' || order.status.toLowerCase() === filterStatus.toLowerCase();
                                         return matchesSearch && matchesStatus;
                                     })
                                     .map((order) => (
                                         <tr key={order._id} className="hover:bg-gray-50 transition-colors duration-150">
-                                            <td className="px-6 py-4 text-sm font-medium text-blue-600">#{order._id.substring(0, 8)}...</td>
+                                            <td className="px-6 py-4 text-sm font-medium">
+                                                <button 
+                                                    onClick={() => {
+                                                        setSelectedOrder(order);
+                                                        setIsDialogOpen(true);
+                                                    }}
+                                                    className="text-blue-600 hover:text-blue-800 hover:underline font-bold"
+                                                >
+                                                    #{order.orderId || order._id.substring(0, 8)}
+                                                </button>
+                                            </td>
                                             <td className="px-6 py-4 text-sm text-gray-700">{order.shippingAddress?.name || 'N/A'}</td>
                                             <td className="px-6 py-4 text-sm text-gray-500">
                                                 {new Date(order.createdAt).toLocaleDateString()}
@@ -190,7 +200,7 @@ const Orders = () => {
                     <DialogHeader>
                         <DialogTitle>Order Details</DialogTitle>
                         <DialogDescription>
-                            Order ID: <span className="font-mono font-medium text-foreground">#{selectedOrder?._id}</span>
+                            Order ID: <span className="font-mono font-medium text-foreground">#{selectedOrder?.orderId || selectedOrder?._id}</span>
                         </DialogDescription>
                     </DialogHeader>
 

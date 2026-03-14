@@ -31,7 +31,9 @@ app.use('/api/premium-plans', require('./routes/premiumPlans'));
 // New Admin Logic Routes
 app.use('/api/admin/sellers', require('./routes/adminSellers'));
 app.use('/api/admin/customers', require('./routes/adminCustomers'));
-app.use('/api/admin/tax', require('./routes/adminTax'));
+app.use('/api/admin/payments', require('./routes/adminPayments'));
+app.use('/api/reports', require('./routes/reports'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 
 app.get('/', (req, res) => {

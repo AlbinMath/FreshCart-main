@@ -13,6 +13,9 @@ const reviewSchema = new mongoose.Schema({
     reviewText: { type: String, required: true },
     suggestion: { type: String },
     deliveryReview: { type: String },
+    productName: { type: String },
+    productImage: { type: String },
+    productCategory: { type: String },
     createdAt: { type: Date, default: Date.now }
 });
 

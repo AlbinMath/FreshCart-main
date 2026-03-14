@@ -1,10 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import DeliveryEstimate from './DeliveryEstimate';
+import ProductReviewsDialog from './ProductReviewsDialog';
+import apiService from '../services/apiService';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function ProductDetailsDialog({ product, onClose, activeFlashSalePrice }) {
     if (!product) return null;
 
     const [activeImage, setActiveImage] = useState(product.images?.[0] || null);
+    const [showReviews, setShowReviews] = useState(false);
+    const [userOrder, setUserOrder] = useState(null);
+    const { currentUser } = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const checkUserOrder = async () => {
+            if (currentUser && product._id) {
+                try {
+                    const res = await apiService.get(`/payment/user-orders/${currentUser.uid}`);
+                    if (res.success) {
+                        const purchasedOrder = res.orders.find(o => 
+                            (o.status?.toLowerCase() === 'delivered' || o.status?.toLowerCase() === 'placed' || o.status?.toLowerCase() === 'shipped') && 
+                            o.items.some(item => String(item.productId || item._id) === String(product._id))
+                        );
+                        setUserOrder(purchasedOrder);
+                    }
+                } catch (err) {
+                    console.error("Error checking orders:", err);
+                }
+            }
+        };
+        checkUserOrder();
+    }, [currentUser, product._id]);
 
     const formatPrice = (price) => {
         return new Intl.NumberFormat('en-IN', {
@@ -93,6 +121,18 @@ export default function ProductDetailsDialog({ product, onClose, activeFlashSale
                             </div>
                         </div>
                         <div className="text-right">
+                            {/* Star Rating Display */}
+                            <div className="flex flex-col items-end mb-2">
+                                <div className="flex text-yellow-400">
+                                    {[...Array(5)].map((_, i) => (
+                                        <svg key={i} className={`h-4 w-4 ${i < Math.round(product.averageRating || 0) ? 'fill-current' : 'text-gray-300'}`} viewBox="0 0 20 20">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                        </svg>
+                                    ))}
+                                </div>
+                                <span className="text-[10px] text-gray-500 font-medium">({product.reviewCount || 0} reviews)</span>
+                            </div>
+
                             {activeFlashSalePrice !== null && activeFlashSalePrice !== undefined ? (
                                 <>
                                     <p className="text-3xl font-bold text-red-600">{formatPrice(activeFlashSalePrice)}</p>
@@ -108,6 +148,42 @@ export default function ProductDetailsDialog({ product, onClose, activeFlashSale
                             )}
                             <p className="text-xs text-gray-500 mt-1">per {product.unit}</p>
                         </div>
+                    </div>
+
+                    {/* Review Actions */}
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setShowReviews(true)}
+                            className="flex-1 py-2 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                        >
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            View Reviews & Analysis
+                        </button>
+                        {userOrder ? (
+                            <button
+                                onClick={() => navigate(`/rate-product/${userOrder._id}/${product._id}`)}
+                                className="flex-1 py-2 px-4 bg-yellow-400 hover:bg-yellow-500 text-yellow-900 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2"
+                            >
+                                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                                Add Review
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => navigate('/orders')}
+                                title="You can only rate products you have purchased"
+                                className="flex-1 py-2 px-4 bg-gray-200 text-gray-400 cursor-not-allowed rounded-lg text-sm font-bold flex items-center justify-center gap-2"
+                                disabled
+                            >
+                                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Purchased to Rate
+                            </button>
+                        )}
                     </div>
 
                     {/* Description */}
@@ -184,6 +260,13 @@ export default function ProductDetailsDialog({ product, onClose, activeFlashSale
                     </div>
                 </div>
             </div>
+
+            {showReviews && (
+                <ProductReviewsDialog
+                    productId={product._id}
+                    onClose={() => setShowReviews(false)}
+                />
+            )}
         </div>
     );
 }

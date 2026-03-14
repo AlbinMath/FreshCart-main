@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/ui/card';
 import { User, Store, Phone, Mail, MapPin, Truck, Clock, Briefcase, FileText, CreditCard, Smartphone, Fingerprint, Tags } from 'lucide-react';
 import { Button } from '@/ui/button';
 import { Badge } from '@/ui/badge';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import LocationPicker from '../components/LocationPicker';
 
 const Profile = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [seller, setSeller] = useState(null);
-    const [isEditing, setIsEditing] = useState(false);
+    const [isEditing, setIsEditing] = useState(location.state?.isEditing || false);
     const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         businessType: '',

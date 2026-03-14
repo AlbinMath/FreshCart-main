@@ -112,8 +112,8 @@ export default function Orders() {
                                             <p className="font-bold text-lg text-green-600">
                                                 {new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(order.totalAmount)}
                                             </p>
-                                            <span className={`px-3 py-1 rounded-full text-xs font-medium mt-2 ${order.status === 'Delivered' ? 'bg-green-100 text-green-800' :
-                                                order.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
+                                            <span className={`px-3 py-1 rounded-full text-xs font-medium mt-2 ${order.status?.toLowerCase() === 'delivered' ? 'bg-green-100 text-green-800' :
+                                                order.status?.toLowerCase() === 'cancelled' ? 'bg-red-100 text-red-800' :
                                                     'bg-yellow-100 text-yellow-800'
                                                 }`}>
                                                 {order.status}
@@ -122,7 +122,7 @@ export default function Orders() {
                                     </div>
 
                                     {/* ✅ Delivery Estimate – only for active orders */}
-                                    {order.status !== 'Delivered' && order.status !== 'Cancelled' && (
+                                    {order.status?.toLowerCase() !== 'delivered' && order.status?.toLowerCase() !== 'cancelled' && (
                                         <div className="mt-4 border-t pt-4">
                                             <DeliveryEstimate
                                                 storeAddress={(order.items?.[0] || {}).storeAddress || null}
