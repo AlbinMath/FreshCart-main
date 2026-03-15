@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/AlbinMath/FreshCart-main/main/Customer/Frontend/src/assets/logo.png" alt="FreshCart Logo" width="120" />
+
   <h1>🛒 FreshCart</h1>
   <p><strong>A Premium Multi-Service E-Commerce & Last-Mile Delivery Ecosystem</strong></p>
   
@@ -24,10 +24,10 @@ The platform is designed for scalability, featuring specialized portals for ever
 
 | Portal / Service | Description | Links |
 | :--- | :--- | :--- |
-| **[Customer Portal](./Customer)** | High-performance storefront with Razorpay integration and a unique "Grower Portal" for C2B sourcing. | [Details](./Customer/README.md) |
-| **[Seller Dashboard](./Seller)** | Comprehensive merchant tool for inventory management, order fulfillment, and C2B sourcing analytics. | [Details](./Seller/README.md) |
+| **[Customer Portal](./Customer)** | High-performance storefront with KNN-based recommendations, Razorpay integration, and a unique "Grower Portal" for C2B sourcing. | [Details](./Customer/README.md) |
+| **[Seller Dashboard](./Seller)** | Comprehensive merchant tool with SVM performance analytics and AI product-level stock suggestions. | [Details](./Seller/README.md) |
 | **[Delivery Hub](./Delivery)** | Real-time tracking, earnings management, and optimized route assignments for agents. | [Details](./Delivery/README.md) |
-| **[Admin Control](./Administrator)** | Centralized platform governance, user/seller approvals, marketing controls, and tax management. | [Details](./Administrator/README.md) |
+| **[Admin Control](./Administrator)** | Centralized platform governance, premium delivery plan management, user/seller approvals, and tax management. | [Details](./Administrator/README.md) |
 | **[IDS (Intelligent Dispatch)](./ids)** | The "brain" of FreshCart. Uses Python/ML (DBSCAN/K-Means) for geospatial order batching. | [Details](./ids/README.md) |
 | **[AI Chatbot](./chatbot)** | Intelligent support assistant handling order inquiries and platform documentation. | [Details](./chatbot/README.md) |
 | **[Tax Microservice](./tax)** | Independent logic for regional GST, TCS, and fee calculations. | [Details](./tax/README.md) |
@@ -56,6 +56,8 @@ The platform is designed for scalability, featuring specialized portals for ever
 - **Services**:
   - **Intelligent Dispatch (IDS)**: DBSCAN & K-Means for geospatial order batching and terminal optimization.
   - **Performance Intelligence (SVM)**: Support Vector Machine (RBF kernel) for seller tiering and risk analysis.
+  - **Product Analysis**: Demand forecasting and stock suggestions based on sales velocity and customer sentiment.
+  - **Recommendation Engine (KNN)**: K-Nearest Neighbors algorithm for personalized customer product recommendations.
 - **NLP**: Intent classification for the customer support chatbot handling order queries.
 
 ---

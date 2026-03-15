@@ -1,5 +1,5 @@
 import React from 'react';
-import { Users, UserCheck, Clock, ShoppingBag, Landmark, ArrowUpRight, ArrowDownRight, CreditCard, ChevronDown, ArrowDown, X } from 'lucide-react';
+import { Users, UserCheck, Clock, ShoppingBag, Landmark, ArrowUpRight, ArrowDownRight, CreditCard, ChevronDown, ArrowDown, X, Crown } from 'lucide-react';
 
 const DashboardOverview = () => {
     const [statsData, setStatsData] = React.useState({
@@ -12,7 +12,8 @@ const DashboardOverview = () => {
         totalRevenue: 0,
         totalWithdrawals: 0,
         pendingPayouts: 0,
-        adminProfit: 0
+        adminProfit: 0,
+        premiumRevenue: 0
     });
     const [history, setHistory] = React.useState([]);
     const [loadingHistory, setLoadingHistory] = React.useState(true);
@@ -81,6 +82,7 @@ const DashboardOverview = () => {
         { title: 'Total Payouts', value: `₹${financialStats.totalWithdrawals.toLocaleString()}`, icon: ArrowDownRight, color: 'text-red-600', bg: 'bg-red-100' },
         { title: 'Pending Payouts', value: `₹${financialStats.pendingPayouts.toLocaleString()}`, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
         { title: 'Platform Profit (30%)', value: `₹${financialStats.adminProfit.toLocaleString()}`, icon: Landmark, color: 'text-indigo-600', bg: 'bg-indigo-100' },
+        { title: 'Premium Revenue', value: `₹${(financialStats.premiumRevenue || 0).toLocaleString()}`, icon: Crown, color: 'text-yellow-600', bg: 'bg-yellow-50' },
     ];
 
     const deliveryHistory = history.filter(h => h.type === 'B2C Order');
@@ -91,7 +93,7 @@ const DashboardOverview = () => {
     return (
         <div className="space-y-6">
             {/* Financial Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 lg:gap-6">
                 {finStats.map((stat, index) => (
                     <div key={index} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 transition-all hover:shadow-md border-b-4 border-b-transparent hover:border-b-current" style={{ color: stat.color.split('-')[1] === '600' ? stat.color.split('-')[1] : '' }}>
                         <div className={`p-3 rounded-xl ${stat.bg} ${stat.color}`}>

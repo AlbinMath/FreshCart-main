@@ -16,6 +16,8 @@ const C2B_Order = customerConn.models.C2B_Order || customerConn.model('C2B_Order
 const withdrawalRequestSchema = require('../../../Customer/Backend/models/WithdrawalRequest');
 const WithdrawalRequest = customerConn.models.WithdrawalRequest || customerConn.model('WithdrawalRequest', withdrawalRequestSchema);
 
+const CustomerPlan = require('../models/CustomerPlan');
+
 // Seller Withdrawal Schema (matching the one in Seller Backend)
 const sellerWithdrawalSchema = new mongoose.Schema({
     sellerId: String,
@@ -373,12 +375,20 @@ router.get('/stats/financial', async (req, res) => {
 
         const pendingPayouts = (growerP[0]?.total || 0) + (sellerP[0]?.total || 0) + (deliveryP[0]?.total || 0);
 
+        // Calculate Premium Delivery Revenue (Completed)
+        const premiumStats = await CustomerPlan.aggregate([
+            { $match: { paymentStatus: 'completed' } },
+            { $group: { _id: null, total: { $sum: "$grandTotal" } } }
+        ]);
+        const premiumRevenue = premiumStats[0] ? premiumStats[0].total : 0;
+
         res.status(200).json({
             success: true,
             totalRevenue,
             totalWithdrawals,
             pendingPayouts,
-            adminProfit: totalRevenue * 0.30
+            adminProfit: (totalRevenue * 0.30) + premiumRevenue,
+            premiumRevenue
         });
     } catch (error) {
         console.error('Error fetching financial stats:', error);

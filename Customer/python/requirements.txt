@@ -4,3 +4,7 @@ textblob
 nltk
 python-dotenv
 axios
+pymongo
+pandas
+scikit-learn
+numpy

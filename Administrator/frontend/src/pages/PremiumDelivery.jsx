@@ -28,6 +28,8 @@ const PremiumDelivery = () => {
     const [loading, setLoading] = useState(true);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [currentPlan, setCurrentPlan] = useState(null); // null for create, object for edit
+    const [purchases, setPurchases] = useState([]);
+    const [loadingPurchases, setLoadingPurchases] = useState(true);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -59,8 +61,23 @@ const PremiumDelivery = () => {
         }
     };
 
+    const fetchPurchases = async () => {
+        try {
+            const res = await fetch('http://localhost:5003/api/premium-plans/purchases');
+            if (res.ok) {
+                const data = await res.json();
+                setPurchases(data);
+            }
+        } catch (error) {
+            console.error("Error fetching purchases:", error);
+        } finally {
+            setLoadingPurchases(false);
+        }
+    };
+
     useEffect(() => {
         fetchPlans();
+        fetchPurchases();
     }, []);
 
     const handleInputChange = (e) => {
@@ -266,6 +283,101 @@ const PremiumDelivery = () => {
                         {plans.filter(p => p.type === 'customer').map((plan) => (
                             <PlanCard key={plan._id} plan={plan} />
                         ))}
+                    </div>
+                </div>
+
+                {/* Purchase History Section */}
+                <div className="space-y-6 pt-10 border-t border-gray-100">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                        <div className="space-y-1">
+                            <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                <Clock className="text-blue-600" size={24} />
+                                Plan Purchase History
+                            </h2>
+                            <p className="text-gray-500 text-sm">Monitor recent customer subscriptions and plan activations.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        {loadingPurchases ? (
+                            <div className="p-12 flex flex-col items-center justify-center gap-4">
+                                <div className="w-10 h-10 border-4 border-blue-600/20 border-t-blue-600 rounded-full animate-spin" />
+                                <p className="text-gray-400 font-medium animate-pulse">Loading purchase history...</p>
+                            </div>
+                        ) : purchases.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="bg-gray-50 border-b border-gray-100">
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Customer</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Plan Details</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Transaction</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Status</th>
+                                            <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Dates</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {purchases.map((purchase) => (
+                                            <tr key={purchase._id} className="hover:bg-gray-50/50 transition-colors group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{purchase.customerName}</span>
+                                                        <span className="text-xs text-gray-500">{purchase.customerEmail}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <Badge variant="outline" className="w-fit mb-1 bg-blue-50 text-blue-700 border-blue-100">
+                                                            {purchase.planName}
+                                                        </Badge>
+                                                        <span className="text-sm font-black text-gray-900">₹{purchase.grandTotal.toLocaleString()}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-xs font-mono text-gray-400 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                                                        {purchase.transactionId || 'N/A'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider w-fit ${
+                                                            purchase.status === 'active' ? 'bg-green-100 text-green-700' :
+                                                            purchase.status === 'expired' ? 'bg-orange-100 text-orange-700' :
+                                                            'bg-red-100 text-red-700'
+                                                        }`}>
+                                                            {purchase.status}
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 font-bold uppercase ml-0.5">Payment: {purchase.paymentStatus}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col text-[11px]">
+                                                        <div className="flex items-center gap-1.5 text-gray-500">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                                            <span>Activated: {new Date(purchase.activationDate).toLocaleDateString()}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5 text-gray-400 mt-1">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
+                                                            <span>Expires: {new Date(purchase.expiryDate).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="p-12 flex flex-col items-center justify-center text-center gap-4 bg-gray-50/20">
+                                <div className="p-4 bg-gray-100 rounded-full text-gray-400">
+                                    <ShoppingBag size={32} />
+                                </div>
+                                <div className="space-y-1">
+                                    <h3 className="text-gray-900 font-bold">No Purchases Yet</h3>
+                                    <p className="text-gray-500 text-sm max-w-xs mx-auto">Customers haven't subscribed to any premium delivery plans yet.</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

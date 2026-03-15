@@ -5,7 +5,9 @@ The flagship storefront of FreshCart. A high-performance, responsive e-commerce 
 ## ✨ Features
 
 - **Dynamic Storefront**: Advanced filtering, categorization, and search for thousands of products.
+- **KNN-Powered Recommendations**: Personalized "Recommended for You" section utilizing K-Nearest Neighbors to match user preferences with high-rated products.
 - **Secure Checkout**: Integrated with **Razorpay** for seamless digital payments.
+- **Infinite Scroll Product Reviews**: Full-depth review exploration with seamless loading of customer feedback and ratings.
 - **Grower Portal (C2B)**: A unique feature allowing customers/growers to propose their own produce for sourcing by sellers.
 - **AI-Verified Sourcing**: Integrated indicators showing grower reliability based on system-wide metrics.
 - **Flash Sales**: Real-time discounted price tags and countdown timers for limited-time offers.

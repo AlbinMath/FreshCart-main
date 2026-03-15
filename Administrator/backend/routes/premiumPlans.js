@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const PremiumPlan = require('../models/PremiumPlan');
+const CustomerPlan = require('../models/CustomerPlan');
+const Customer = require('../models/Customer');
 
 // @route   GET /api/premium-plans
 // @desc    Get all premium plans
@@ -9,6 +11,30 @@ router.get('/', async (req, res) => {
     try {
         const plans = await PremiumPlan.find();
         res.json(plans);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   GET /api/premium-plans/purchases
+// @desc    Get all premium plan purchases
+// @access  Private (Admin)
+router.get('/purchases', async (req, res) => {
+    try {
+        const purchases = await CustomerPlan.find().sort({ createdAt: -1 });
+        
+        // Enrich with customer details
+        const enrichedPurchases = await Promise.all(purchases.map(async (p) => {
+            const customer = await Customer.findOne({ uid: p.userId }).select('name email phoneNumber');
+            return {
+                ...p.toObject(),
+                customerName: customer ? customer.name : 'Unknown',
+                customerEmail: customer ? customer.email : 'N/A'
+            };
+        }));
+        
+        res.json(enrichedPurchases);
     } catch (err) {
         console.error(err.message);
         res.status(500).send('Server Error');

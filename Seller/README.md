@@ -6,6 +6,7 @@ A powerful merchant interface that empowers sellers to manage their store, inven
 
 - **Store Overview**: Real-time sales metrics, order counts, and revenue analytics.
 - **[AI Performance Intelligence](./python)**: Multidimensional Support Vector Machine (SVM) analysis of seller performance. Classifies sellers into tiers (Excellent, Good, Average, Poor) with real-time tracking of successful vs failed deliveries.
+- **Product Analysis & Stock Suggestions**: AI-driven inventory insights that analyze sales velocity and customer reviews to suggest optimal stock levels.
 - **Inventory Management**: Easy tools for adding products, managing stock levels, and setting prices.
 - **C2B Sourcing Integration**: Integrated sourcing platform where sellers can acquire produce directly from growers with AI-verified performance indicators.
 - **Order Fulfillment**: Streamlined workflow for managing incoming orders and dispatching through the Intelligent Dispatch System.

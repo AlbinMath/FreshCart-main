@@ -5,6 +5,7 @@ This microservice provides AI-driven performance analysis for FreshCart sellers 
 ## 📊 Core Functionality
 
 - **SVM Classification**: Utilizes a non-linear Radial Basis Function (RBF) kernel to classify sellers into four tiers: `Excellent`, `Good`, `Average`, and `Poor`.
+- **Product Analysis & Stock Suggestions**: Analyzes sales velocity, revenue, and customer sentiment to provide "Demand Forecasting Lite" and stock recommendations.
 - **Real-Time Evaluation**: Dynamically calculates performance metrics from live MongoDB data (Reviews, Orders, and Account Age).
 - **Predictive Metrics**:
   - `Quality Score`: Based on product reviews.
@@ -27,6 +28,7 @@ This microservice provides AI-driven performance analysis for FreshCart sellers 
 | Endpoint | Method | Description |
 | :--- | :--- | :--- |
 | `/evaluate/<seller_id>` | `GET` | Returns AI performance tier, confidence score, and detailed metrics for a specific seller. |
+| `/product-analysis/<seller_id>` | `GET` | Returns product-level analytics including sales velocity, revenue, and stock suggestions. |
 | `/train` | `POST` | Triggers a full retraining of the SVM model using the current database state. |
 | `/health` | `GET` | Service status and capability check. |
 

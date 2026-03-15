@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     Dialog,
     DialogContent,
@@ -9,7 +9,8 @@ import {
 import { Badge } from "@/ui/badge";
 import { ScrollArea } from "@/ui/scroll-area";
 import { Separator } from "@/ui/separator";
-import { Package, Tag, Info, Layers, Scale, Clock, Thermometer, Box, Store, MapPin, BadgeCheck, Calendar, Hash, User, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
+import { Package, Tag, Info, Layers, Scale, Clock, Thermometer, Box, Store, MapPin, BadgeCheck, Calendar, Hash, User, ChevronDown, ChevronUp, Copy, Check, TrendingUp, Star } from 'lucide-react';
+import { Progress } from "@/ui/progress";
 import ProductImageSlider from './ProductImageSlider';
 import { Button } from "@/ui/button";
 import { toast } from "sonner";
@@ -54,6 +55,26 @@ const ExpandableText = ({ text, limit = 150, className = "", clampLines = 2 }) =
 
 const ProductDetailsDialog = ({ open, onOpenChange, product, performanceData }) => {
     const [copiedId, setCopiedId] = useState(false);
+    const [stats, setStats] = useState(null);
+
+    useEffect(() => {
+        if (open && product?._id) {
+            fetchReviewsStats();
+        }
+    }, [open, product]);
+
+    const fetchReviewsStats = async () => {
+        try {
+            const nameParam = product.productName ? `?productName=${encodeURIComponent(product.productName)}` : '';
+            const res = await fetch(`${import.meta.env.VITE_API_URL}/reviews/stats/${product._id}${nameParam}`);
+            if (res.ok) {
+                const data = await res.json();
+                setStats(data);
+            }
+        } catch (error) {
+            console.error("Failed to fetch product stats:", error);
+        }
+    };
 
     if (!product) return null;
 
@@ -93,6 +114,12 @@ const ProductDetailsDialog = ({ open, onOpenChange, product, performanceData }) 
                                     `}>
                                         <BadgeCheck className="h-3 w-3" />
                                         {performanceData.tier} Tier (AI Verified)
+                                    </Badge>
+                                )}
+                                {stats && stats.totalReviews > 0 && (
+                                    <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-none flex items-center gap-1 shadow-sm">
+                                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-500" />
+                                        {stats.averageRating} ({stats.totalReviews} reviews)
                                     </Badge>
                                 )}
                             </div>

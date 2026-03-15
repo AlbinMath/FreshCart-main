@@ -21,17 +21,21 @@ import {
 } from "@/ui/alert-dialog";
 import { Check, X, Pencil } from 'lucide-react';
 
-const StockEditor = ({ productId, initialStock, onUpdate }) => {
+const StockEditor = ({ productId, initialStock, onUpdate, forceEdit, resetForceEdit }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [stock, setStock] = useState(initialStock);
     const [loading, setLoading] = useState(false);
 
-    const handleSave = async () => {
-        if (stock === initialStock) {
-            setIsEditing(false);
-            return;
+    useEffect(() => {
+        if (forceEdit) {
+            setIsEditing(true);
+            setStock(initialStock + 50); // Suggest adding 50 units
+            if (resetForceEdit) resetForceEdit();
         }
+    }, [forceEdit]);
 
+    const handleSave = async (customStock) => {
+        const finalStock = customStock !== undefined ? customStock : stock;
         setLoading(true);
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/products/stock/${productId}`, {
@@ -39,13 +43,13 @@ const StockEditor = ({ productId, initialStock, onUpdate }) => {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ stockQuantity: stock }),
+                body: JSON.stringify({ stockQuantity: finalStock }),
             });
 
             if (response.ok) {
                 const updatedProduct = await response.json();
                 onUpdate(updatedProduct.stockQuantity);
-                toast.success("Stock updated");
+                toast.success(`Stock updated to ${finalStock}`);
                 setIsEditing(false);
             } else {
                 toast.error("Failed to update stock");
@@ -125,6 +129,8 @@ const ProductCatalog = () => {
     const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
     const [deleteAllConfirmation, setDeleteAllConfirmation] = useState("");
     const [performanceData, setPerformanceData] = useState(null);
+    const [analysisData, setAnalysisData] = useState(null);
+    const [forceStockEditId, setForceStockEditId] = useState(null);
 
     const fetchPerformance = async (sellerId) => {
         try {
@@ -132,6 +138,13 @@ const ProductCatalog = () => {
             if (res.ok) {
                 const data = await res.json();
                 setPerformanceData(data);
+            }
+
+            // Also fetch product specific analysis
+            const prodRes = await fetch(`http://localhost:6002/product-analysis/${sellerId}`);
+            if (prodRes.ok) {
+                const prodData = await prodRes.json();
+                setAnalysisData(prodData);
             }
         } catch (error) {
             console.error("Failed to fetch performance evaluation", error);
@@ -484,49 +497,133 @@ const ProductCatalog = () => {
                 </div>
             </div>
 
-            {/* SVM Performance Banner */}
-            {performanceData?.success && (
-                <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-none shadow-sm overflow-hidden">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-white rounded-xl shadow-sm">
-                                <TrendingUp className={`h-6 w-6 ${
-                                    performanceData.tier === 'Excellent' ? 'text-green-600' : 
-                                    performanceData.tier === 'Good' ? 'text-blue-600' : 
-                                    performanceData.tier === 'Average' ? 'text-yellow-600' : 
-                                    performanceData.tier === 'New Seller' ? 'text-gray-400' : 'text-red-600'
-                                }`} />
+            {/* AI Insights & Recommendations */}
+            {(performanceData?.success || analysisData?.success) && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Seller Tier Card */}
+                    <Card className="bg-gradient-to-br from-indigo-500 to-purple-600 border-none shadow-lg overflow-hidden text-white lg:col-span-1">
+                        <CardContent className="p-6 relative">
+                            <div className="absolute top-0 right-0 p-4 opacity-10">
+                                <TrendingUp className="h-24 w-24" />
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-gray-900">Seller Performance Tier</h3>
-                                    <Badge className={`
-                                        ${performanceData.tier === 'Excellent' ? 'bg-green-600 hover:bg-green-700' : ''}
-                                        ${performanceData.tier === 'Good' ? 'bg-blue-600 hover:bg-blue-700' : ''}
-                                        ${performanceData.tier === 'Average' ? 'bg-yellow-600 hover:bg-yellow-700' : ''}
-                                        ${performanceData.tier === 'Poor' ? 'bg-red-600 hover:bg-red-700' : ''}
-                                        ${performanceData.tier === 'New Seller' ? 'bg-gray-400 hover:bg-gray-500' : ''}
-                                        border-none text-white
-                                    `}>
-                                        {performanceData.tier}
-                                    </Badge>
+                            <div className="relative z-10">
+                                <span className="text-indigo-100 text-xs font-bold uppercase tracking-wider">AI Performance Engine</span>
+                                <h3 className="text-3xl font-black mt-2 mb-1">{performanceData?.tier || "Analyzing..."}</h3>
+                                <div className="flex items-center gap-2 mb-6">
+                                    <div className="h-1.5 flex-1 bg-white/20 rounded-full overflow-hidden">
+                                        <div 
+                                            className="h-full bg-white transition-all duration-1000" 
+                                            style={{ width: `${(performanceData?.confidence || 0.5) * 100}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-xs font-bold">{((performanceData?.confidence || 0) * 100).toFixed(0)}% Match</span>
                                 </div>
-                                <p className="text-sm text-gray-500 mt-0.5">
-                                    Confidence Score: <span className="font-semibold text-gray-700">{((performanceData.confidence || 0) * 100).toFixed(0)}%</span> • 
-                                    Based on <span className="font-semibold text-gray-700">{performanceData.metrics?.review_count || 0} reviews</span>
-                                </p>
+                                
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between text-sm bg-white/10 p-2 rounded-lg">
+                                        <span className="opacity-80">Order Success</span>
+                                        <span className="font-bold">{((performanceData?.metrics?.fulfillment_rate || 0) * 100).toFixed(1)}%</span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm bg-white/10 p-2 rounded-lg">
+                                        <span className="opacity-80">Avg. Quality</span>
+                                        <span className="font-bold">{performanceData?.metrics?.quality?.toFixed(1) || "0.0"} / 5</span>
+                                    </div>
+                                </div>
+
+                                <Button 
+                                    size="sm" 
+                                    className="w-full mt-6 bg-white text-indigo-600 hover:bg-indigo-50 border-none font-bold"
+                                    onClick={() => navigate('/svm-analysis')}
+                                >
+                                    View Full Report
+                                </Button>
                             </div>
-                        </div>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="bg-white/50 hover:bg-white"
-                            onClick={() => fetchPerformance(performanceData.seller_id)}
-                        >
-                            Refresh Analysis
-                        </Button>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
+
+                    {/* Product Recommendations */}
+                    <Card className="lg:col-span-2 bg-white border-none shadow-sm overflow-hidden">
+                        <CardContent className="p-6">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <BadgeCheck className="h-5 w-5 text-green-600" />
+                                    <h3 className="font-bold text-gray-800">AI Top Recommendations</h3>
+                                </div>
+                                <span className="text-[10px] bg-green-50 text-green-700 px-2 py-1 rounded-full font-bold">SMART RANKING</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {analysisData?.recommendations?.map((rec, idx) => (
+                                    <div key={rec.productId} className="group relative bg-gray-50 rounded-xl p-3 border border-transparent hover:border-green-100 hover:bg-white transition-all">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="relative">
+                                                <img 
+                                                    src={rec.image || "/placeholder-product.png"} 
+                                                    alt={rec.productName}
+                                                    className="h-12 w-12 rounded-lg object-cover shadow-sm"
+                                                />
+                                                <div className="absolute -top-2 -left-2 h-5 w-5 bg-green-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold border-2 border-white shadow-sm">
+                                                    {idx + 1}
+                                                </div>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="text-sm font-bold text-gray-800 truncate">{rec.productName}</h4>
+                                                <p className="text-[10px] text-gray-500">{rec.sales} units sold</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-2">
+                                            <div className="flex text-yellow-500">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} className={`h-2.5 w-2.5 ${i < Math.floor(rec.avgRating) ? 'fill-current' : 'text-gray-200'}`} />
+                                                ))}
+                                            </div>
+                                            <span className="text-[10px] font-bold text-gray-600">{rec.avgRating.toFixed(1)}</span>
+                                        </div>
+                                        <div className="mt-3 flex items-center justify-between gap-2">
+                                            <div className={`flex-1 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 ${
+                                                rec.color === 'red' ? 'bg-red-100 text-red-700' : 
+                                                rec.color === 'yellow' ? 'bg-yellow-100 text-yellow-700' :
+                                                rec.color === 'blue' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'
+                                            }`}>
+                                                <AlertTriangle className="h-3 w-3" />
+                                                {rec.suggestion}
+                                            </div>
+                                            {(rec.color === 'red' || rec.color === 'yellow') && (
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="ghost" 
+                                                    className="h-6 w-6 text-indigo-600 hover:bg-indigo-50"
+                                                    onClick={() => setForceStockEditId(rec.productId)}
+                                                    title="Quick Restock"
+                                                >
+                                                    <Plus className="h-3 w-3" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!analysisData?.recommendations || analysisData.recommendations.length === 0) && (
+                                    <div className="col-span-3 py-8 text-center text-gray-400 italic text-sm">
+                                        Not enough sales data yet to generate specific product recommendations.
+                                    </div>
+                                )}
+                            </div>
+
+                            {analysisData?.insights?.length > 0 && (
+                                <div className="mt-6 flex flex-wrap gap-2">
+                                    {analysisData.insights.map((insight, i) => (
+                                        <div key={i} className={`flex items-center gap-2 text-xs p-2 rounded-lg border ${
+                                            insight.type === 'success' ? 'bg-green-50 border-green-100 text-green-700' : 'bg-yellow-50 border-yellow-100 text-yellow-700'
+                                        }`}>
+                                            <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" />
+                                            {insight.message}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
             )}
 
             {/* Search & Filter */}
@@ -606,6 +703,18 @@ const ProductCatalog = () => {
                                                     style={{ width: `${performanceData.confidence * 100}%` }}
                                                 />
                                             </div>
+
+                                            {/* Product specific insight if available */}
+                                            {analysisData?.all_analysis?.find(a => a.productId === product._id) && (
+                                                <div className={`mt-2 text-[10px] font-bold p-1 rounded-md flex items-center gap-1 ${
+                                                    analysisData.all_analysis.find(a => a.productId === product._id).color === 'red' ? 'bg-red-50 text-red-600' :
+                                                    analysisData.all_analysis.find(a => a.productId === product._id).color === 'yellow' ? 'bg-yellow-50 text-yellow-600' :
+                                                    analysisData.all_analysis.find(a => a.productId === product._id).color === 'blue' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
+                                                }`}>
+                                                    <TrendingUp className="h-3 w-3" />
+                                                    {analysisData.all_analysis.find(a => a.productId === product._id).suggestion}
+                                                </div>
+                                            )}
                                         </div>
                                     )}
 
@@ -618,6 +727,8 @@ const ProductCatalog = () => {
                                         <StockEditor
                                             productId={product._id}
                                             initialStock={product.stockQuantity}
+                                            forceEdit={forceStockEditId === product._id}
+                                            resetForceEdit={() => setForceStockEditId(null)}
                                             onUpdate={(newStock) => {
                                                 setProducts(products.map(p =>
                                                     p._id === product._id ? { ...p, stockQuantity: newStock } : p

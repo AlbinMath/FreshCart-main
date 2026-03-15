@@ -118,7 +118,7 @@ const SvmAnalysis = () => {
         );
     }
 
-    const { tier, confidence, metrics } = performanceData;
+    const { tier, confidence, metrics, insights } = performanceData;
 
     const getTierColor = (t) => {
         switch(t) {
@@ -312,21 +312,20 @@ const SvmAnalysis = () => {
                     </div>
                     <CardContent className="p-0">
                         <div className="divide-y divide-gray-100">
-                            <AnalysisItem 
-                                title="Product Category Performance" 
-                                description="AI detected that your 'Fresh Vegetables' category has higher quality ratings than 'Dairy Products'."
-                                impact="high"
-                            />
-                            <AnalysisItem 
-                                title="Review Keywords Analysis" 
-                                description="Keywords like 'fresh', 'timely', and 'well-packed' appear in 74% of your top-rated products."
-                                impact="medium"
-                            />
-                            <AnalysisItem 
-                                title="Delivery Correlation" 
-                                description={`Significant correlation found between 'Delivered in < 2 hrs' and your ${metrics?.success_count} successful orders.`}
-                                impact="high"
-                            />
+                            {insights && insights.length > 0 ? (
+                                insights.map((insight, idx) => (
+                                    <AnalysisItem 
+                                        key={idx}
+                                        title={insight.title} 
+                                        description={insight.description}
+                                        impact={insight.impact}
+                                    />
+                                ))
+                            ) : (
+                                <div className="p-8 text-center text-gray-500 text-sm">
+                                    Gather more data to unlock specific AI insight patterns.
+                                </div>
+                            )}
                         </div>
                     </CardContent>
                 </Card>

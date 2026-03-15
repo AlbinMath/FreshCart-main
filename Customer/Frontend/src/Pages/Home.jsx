@@ -22,6 +22,8 @@ function Home() {
     const [addingToCart, setAddingToCart] = useState(new Set());
     const [viewingProduct, setViewingProduct] = useState(null);
     const [flashSales, setFlashSales] = useState([]);
+    const [recommendedProducts, setRecommendedProducts] = useState([]);
+    const [fetchingRecommendations, setFetchingRecommendations] = useState(false);
 
 
     // Fetch products from the public API
@@ -67,12 +69,72 @@ function Home() {
         return () => clearInterval(intervalId);
     }, []);
 
-    // ... (Filter logic remains same, abstracted below for brevity or assume kept unless replaced) ...
-    // Note: Since I am replacing the top part, I need to ensure lines approx 46-130 are safely kept or I should use multi-replace if I want to be surgical.
-    // However, the tool prompt says "Replace imports and Navbar/Hero section". 
-    // I will use replace_file_content for the top chunk.
+    // Fetch recommendations when user or products change
+    useEffect(() => {
+        let isSubscribed = true;
+
+        const fetchRecommendations = async () => {
+            if (!currentUser || products.length === 0 || fetchingRecommendations) return;
+
+            try {
+                setFetchingRecommendations(true);
+                const pythonApiUrl = import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:6003';
+
+                const response = await fetch(`${pythonApiUrl}/recommend`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: currentUser.uid, limit: 4 })
+                });
+                const data = await response.json();
+
+                if (isSubscribed && data.success && data.recommendations) {
+                    const recIds = data.recommendations.map(r => r.productId);
+                    const matched = products.filter(p => recIds.includes(String(p._id)));
+                    const sortedMatched = recIds.map(id => matched.find(p => String(p._id) === id)).filter(Boolean);
+                    setRecommendedProducts(sortedMatched);
+                }
+            } catch (err) {
+                // If it's a port error, don't spam console
+                if (err.message.includes('fetch')) {
+                    console.debug('Recommendation service not reachable');
+                } else {
+                    console.error('Error fetching recommendations:', err);
+                }
+            } finally {
+                if (isSubscribed) setFetchingRecommendations(false);
+            }
+        };
+
+        const timeoutId = setTimeout(fetchRecommendations, 1000); // Small debounce
+        return () => {
+            isSubscribed = false;
+            clearTimeout(timeoutId);
+        };
+    }, [currentUser?.uid, products.length]); // Minimize dependency changes
 
     const filteredProducts = products
+        .map(product => {
+            // Calculate relevance score
+            const term = searchTerm.trim().toLowerCase();
+            const name = String(product.productName || '').toLowerCase();
+            const desc = String(product.description || '').toLowerCase();
+            const cat = String(product.category || 'other').toLowerCase();
+            
+            let score = 0;
+            if (!term) {
+                score = 1;
+            } else {
+                const keywords = term.split(/\s+/).filter(Boolean);
+                keywords.forEach(word => {
+                    if (name.includes(word)) score += 10;
+                    if (name === word) score += 20; // Bonus for exact word match in title
+                    if (cat.includes(word)) score += 5;
+                    if (desc.includes(word)) score += 2;
+                });
+            }
+
+            return { ...product, searchScore: score };
+        })
         .filter(product => {
             // Always hide out-of-stock products
             const stockValue = Number(product.stockQuantity ?? 0);
@@ -80,15 +142,15 @@ function Home() {
 
             const productCategory = String(product.category || 'other').toLowerCase();
             const matchesCategory = selectedCategory === 'all' || productCategory === selectedCategory;
-            const name = String(product.productName || '').toLowerCase();
-            const desc = String(product.description || '').toLowerCase();
-            const term = searchTerm.toLowerCase();
-            const matchesSearch = name.includes(term) || desc.includes(term);
+            const matchesSearch = product.searchScore > 0;
             return matchesCategory && matchesSearch;
         });
 
-    // All displayed products are in-stock; sort by stock quantity descending
+    // Sort: 1. By search relevance (if searching) 2. By stock quantity
     const sortedFilteredProducts = [...filteredProducts].sort((a, b) => {
+        if (searchTerm.trim()) {
+            return b.searchScore - a.searchScore || (Number(b.stockQuantity ?? 0) - Number(a.stockQuantity ?? 0));
+        }
         return Number(b.stockQuantity ?? 0) - Number(a.stockQuantity ?? 0);
     });
 
@@ -258,27 +320,113 @@ function Home() {
                 )}
 
 
+
                 {/* Product Browsing Section */}
                 <div className="mb-12">
                     <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">
                         Browse Fresh Products
                     </h2>
 
+
                     {/* Search and Filter Controls */}
                     <div className="mb-8 bg-white p-6 rounded-lg shadow-md">
                         <div className="flex flex-col md:flex-row gap-4">
                             {/* Search Bar */}
-                            <div className="flex-1">
+                            <div className="flex-1 relative">
                                 <input
                                     type="text"
-                                    placeholder="Search products..."
+                                    placeholder="Search products by name, category or description..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                                 />
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                {searchTerm && (
+                                    <button 
+                                        onClick={() => setSearchTerm('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                )}
                             </div>
                         </div>
+                        {searchTerm && (
+                            <div className="mt-3 flex items-center justify-between text-sm">
+                                <span className="text-gray-500 italic">
+                                    Found {sortedFilteredProducts.length} product{sortedFilteredProducts.length !== 1 ? 's' : ''} for "{searchTerm}"
+                                </span>
+                                <span className="text-[10px] text-blue-500 font-bold uppercase tracking-wider">
+                                    Sorted by Relevance
+                                </span>
+                            </div>
+                        )}
                     </div>
+
+                    {/* AI Recommendations Section - Moved below search bar */}
+                    {currentUser && recommendedProducts.length > 0 && (
+                        <div className="mb-10 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100/50">
+                            <div className="flex items-center justify-between mb-5">
+                                <h2 className="text-xl font-bold text-blue-900 flex items-center gap-2">
+                                    <span className="bg-blue-600 text-white p-1 rounded-lg text-sm shadow-lg shadow-blue-200">✨</span>
+                                    Recommended
+
+                                </h2>
+
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                {recommendedProducts.map((product) => (
+                                    <div key={product._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all group flex flex-col h-full">
+                                        <div
+                                            className="h-32 bg-gray-50 flex items-center justify-center cursor-pointer overflow-hidden"
+                                            onClick={() => setViewingProduct(product)}
+                                        >
+                                            <div className="transform group-hover:scale-110 transition-transform duration-500 w-full h-full">
+                                                <ProductCardImage
+                                                    images={product.images}
+                                                    altText={product.productName}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="p-3 flex-1 flex flex-col">
+                                            <h3 className="font-bold text-gray-800 mb-1 truncate text-xs">
+                                                {product.productName}
+                                            </h3>
+                                            <div className="flex items-center gap-1 mb-2">
+                                                <span className="text-[#FBBF24] text-xs">★</span>
+                                                <span className="text-[10px] text-gray-500 font-medium">
+                                                    {product.averageRating?.toFixed(1) || '0.0'}
+                                                </span>
+                                            </div>
+                                            <div className="mt-auto pt-2 flex items-center justify-between border-t border-gray-50">
+                                                <span className="text-indigo-600 font-extrabold text-sm">
+                                                    {formatPrice(product.sellingPrice)}
+                                                </span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleAddToCart(product);
+                                                    }}
+                                                    disabled={product.stockQuantity === 0 || addingToCart.has(product._id)}
+                                                    className="p-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:bg-gray-200"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Products Grid */}
                     {loading ? (

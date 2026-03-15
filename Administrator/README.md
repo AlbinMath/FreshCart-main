@@ -6,6 +6,8 @@ The Central Nervous System of the FreshCart ecosystem. This portal allows admini
 
 - **Dashboard Overview**: Real-time visualization of platform health, sales trends, and active users.
 - **User & Role Management**: Comprehensive control over Customer, Seller, and Delivery Agent accounts.
+- **Premium Delivery Plans**: Create and manage premium subscription plans for customers, including price settings and benefit definitions.
+- **Purchase History**: Track and analyze premium plan purchases and platform revenue.
 - **Product Approval**: Quality gate for items added by sellers before they go live on the storefront.
 - **Marketing Control**: Centralized management of flash sales, seasonal discounts, and promotional coupons.
 - **Reports & Analytics**: Advanced visualization of platform revenue, user growth, and order statistics with CSV export capabilities.
