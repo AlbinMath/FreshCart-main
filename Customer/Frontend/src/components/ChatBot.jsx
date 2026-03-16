@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, MessageSquare, X, Minimize2, ShoppingCart, User, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,7 +26,7 @@ const ChatBot = ({ userId }) => {
 
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState([
-        { type: 'bot', content: "Hi! 👋 I'm your FreshCart Assistant. Ask me about products, prices, or your order status!", contentType: 'text' }
+        { type: 'bot', content: "Hi! 👋 I'm your FreshCart AI Assistant. I can help you find products, track orders, or even analyze account performance!", contentType: 'text' }
     ]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -85,6 +84,9 @@ const ChatBot = ({ userId }) => {
                     total: data.order.total,
                     otp: data.order.otp
                 };
+            } else if (data.type === 'add_to_cart' && data.product) {
+                contentType = 'add_to_cart';
+                messageData = data.product;
             }
 
             const botMsg = {
@@ -120,36 +122,36 @@ const ChatBot = ({ userId }) => {
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="mb-4 w-[380px] h-[600px] glass rounded-2xl flex flex-col overflow-hidden shadow-2xl border-white/40 bg-white"
+                        className="mb-4 w-[400px] h-[650px] glass rounded-2xl flex flex-col overflow-hidden shadow-2xl border-white/40 bg-white"
                     >
                         {/* Header */}
-                        <div className="bg-gradient-to-r from-green-600 to-green-500 p-4 flex justify-between items-center text-white shadow-md">
+                        <div className="bg-gradient-to-r from-green-700 to-green-500 p-4 flex justify-between items-center text-white shadow-md">
                             <div className="flex items-center gap-3">
-                                <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm">
+                                <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm border border-white/30">
                                     <MessageSquare size={20} className="text-white" />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-lg">FreshCart Assistant</h3>
+                                    <h3 className="font-bold text-lg leading-tight">FreshCart AI Hub</h3>
                                     <div className="flex items-center gap-1.5 opacity-90">
-                                        <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse"></span>
-                                        <span className="text-xs font-medium">Online</span>
+                                        <span className="w-2 h-2 bg-green-300 rounded-full animate-pulse shadow-[0_0_8px_rgba(134,239,172,0.8)]"></span>
+                                        <span className="text-xs font-medium tracking-wide Uppercase">Active Intelligence</span>
                                     </div>
                                 </div>
                             </div>
-                            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1.5 rounded-lg transition-colors">
-                                <Minimize2 size={18} />
+                            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-2 rounded-xl transition-all">
+                                <X size={20} />
                             </button>
                         </div>
 
                         {/* Messages Area */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/50 scrollbar-hide">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 scrollbar-hide">
                             {messages.map((msg, idx) => (
                                 <div key={idx} className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[85%] ${msg.type === 'user' ? 'order-1' : 'order-2'}`}>
+                                    <div className={`max-w-[90%] ${msg.type === 'user' ? 'order-1' : 'order-2'}`}>
                                         {/* Text Bubble */}
-                                        <div className={`p-3.5 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.type === 'user'
-                                            ? 'bg-green-600 text-white rounded-tr-none'
-                                            : 'bg-white text-gray-700 rounded-tl-none border border-gray-100'
+                                        <div className={`p-4 rounded-2xl shadow-sm text-sm leading-relaxed ${msg.type === 'user'
+                                            ? 'bg-green-700 text-white rounded-tr-none'
+                                            : 'bg-white text-slate-700 rounded-tl-none border border-slate-100'
                                             }`}>
                                             {msg.type === 'bot' ? (
                                                 <div className="prose prose-sm max-w-none">
@@ -157,8 +159,9 @@ const ChatBot = ({ userId }) => {
                                                         components={{
                                                             p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
                                                             strong: ({ children }) => <span className="font-bold text-green-700">{children}</span>,
-                                                            ul: ({ children }) => <ul className="list-none space-y-1 my-1">{children}</ul>,
-                                                            li: ({ children }) => <li className="flex items-start gap-1">{children}</li>,
+                                                            ul: ({ children }) => <ul className="list-none space-y-1.5 my-1.5">{children}</ul>,
+                                                            li: ({ children }) => <li className="flex items-start gap-1"><span>•</span>{children}</li>,
+                                                            h3: ({ children }) => <h3 className="text-green-800 font-bold mt-2 mb-1">{children}</h3>,
                                                         }}
                                                     >
                                                         {msg.content}
@@ -171,23 +174,40 @@ const ChatBot = ({ userId }) => {
 
                                         {/* Rich Content Renderers */}
                                         {msg.contentType === 'product_list' && msg.data && (
-                                            <div className="mt-2 space-y-2">
+                                            <div className="mt-3 grid gap-3">
                                                 {msg.data.map((prod, pIdx) => (
                                                     <ProductCard key={pIdx} data={prod} />
                                                 ))}
                                             </div>
                                         )}
 
+                                        {msg.contentType === 'add_to_cart' && msg.data && (
+                                            <div className="mt-3 bg-white border border-green-100 rounded-2xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <img src={msg.data.image} alt={msg.data.name} className="w-16 h-16 rounded-xl object-cover border border-slate-100" />
+                                                    <div>
+                                                        <h4 className="font-bold text-slate-800">{msg.data.name}</h4>
+                                                        <p className="text-sm font-semibold text-green-600">₹{msg.data.price}</p>
+                                                    </div>
+                                                </div>
+                                                <button className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95">
+                                                    <ShoppingCart size={18} />
+                                                    Add to Cart
+                                                </button>
+                                            </div>
+                                        )}
+
                                         {msg.contentType === 'order_info' && msg.data && (
-                                            <div className="mt-2">
+                                            <div className="mt-3">
                                                 <OrderCard data={msg.data} />
                                             </div>
                                         )}
 
                                         {msg.contentType === 'link' && msg.data && (
-                                            <a href={msg.data.url} target="_blank" rel="noreferrer" className="mt-2 block bg-white border border-green-200 p-3 rounded-xl hover:bg-green-50 transition-colors group">
-                                                <span className="text-green-700 font-medium group-hover:underline text-sm flex items-center gap-2">
-                                                    {msg.data.text} ↗
+                                            <a href={msg.data.url} target="_blank" rel="noreferrer" className="mt-3 block bg-white border border-green-200 p-4 rounded-2xl hover:bg-green-50 transition-all group shadow-sm">
+                                                <span className="text-green-700 font-bold group-hover:underline text-sm flex items-center justify-between">
+                                                    {msg.data.text}
+                                                    <span className="text-green-400 group-hover:translate-x-1 transition-transform">→</span>
                                                 </span>
                                             </a>
                                         )}
@@ -196,10 +216,10 @@ const ChatBot = ({ userId }) => {
                             ))}
                             {isLoading && (
                                 <div className="flex justify-start">
-                                    <div className="bg-white p-3 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm flex gap-1 items-center">
-                                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce"></span>
-                                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce delay-75"></span>
-                                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-bounce delay-150"></span>
+                                    <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-slate-100 shadow-sm flex gap-1.5 items-center">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce"></span>
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                                     </div>
                                 </div>
                             )}
@@ -207,37 +227,46 @@ const ChatBot = ({ userId }) => {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-4 bg-white border-t border-gray-100">
-                            {/* Quick Actions (only show if no input) */}
-                            {messages.length < 3 && !inputText && (
-                                <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide">
-                                    <button onClick={() => setInputText('Price of Onion')} className="whitespace-nowrap px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-xs text-gray-600 rounded-full border border-gray-200 transition-colors">
-                                        🧅 Price of Onion
-                                    </button>
-                                    <button onClick={() => setInputText('Where is my order?')} className="whitespace-nowrap px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-xs text-gray-600 rounded-full border border-gray-200 transition-colors">
-                                        🚚 Track Order
-                                    </button>
-                                    <button onClick={() => setInputText('Help')} className="whitespace-nowrap px-3 py-1.5 bg-gray-50 hover:bg-gray-100 text-xs text-gray-600 rounded-full border border-gray-200 transition-colors">
-                                        ❓ Help
-                                    </button>
-                                </div>
-                            )}
+                        <div className="p-4 bg-white border-t border-slate-100 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
+                            {/* Proactive Quick Actions */}
+                            <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-1 px-1">
+                                <button onClick={() => setInputText('How is my store performance?')} className="flex-none flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-green-50 text-[11px] font-bold text-slate-600 hover:text-green-700 rounded-xl border border-slate-200 hover:border-green-200 transition-all">
+                                    📈 Store Analysis
+                                </button>
+                                <button onClick={() => setInputText('What are the Customer Plans?')} className="flex-none flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-purple-50 text-[11px] font-bold text-slate-600 hover:text-purple-700 rounded-xl border border-slate-200 hover:border-purple-200 transition-all">
+                                    💎 Premium Plans
+                                </button>
+                                <button onClick={() => setInputText('Track my order')} className="flex-none flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-blue-50 text-[11px] font-bold text-slate-600 hover:text-blue-700 rounded-xl border border-slate-200 hover:border-blue-200 transition-all">
+                                    🚚 Track Order
+                                </button>
+                                <button onClick={() => setInputText('Who am I?')} className="flex-none flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-orange-50 text-[11px] font-bold text-slate-600 hover:text-orange-700 rounded-xl border border-slate-200 hover:border-orange-200 transition-all">
+                                    👤 My Profile
+                                </button>
+                                <button onClick={() => setInputText('Help')} className="flex-none flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 hover:bg-gray-100 text-[11px] font-bold text-slate-600 rounded-xl border border-slate-200 transition-all">
+                                    ❓ Help
+                                </button>
+                            </div>
 
                             <div className="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    value={inputText}
-                                    onChange={(e) => setInputText(e.target.value)}
-                                    onKeyPress={handleKeyPress}
-                                    placeholder="Type a message..."
-                                    className="flex-1 bg-gray-50 border border-gray-200 text-gray-900 text-sm rounded-full focus:ring-green-500 focus:border-green-500 block w-full p-2.5 px-4 outline-none transition-shadow"
-                                />
+                                <div className="flex-1 relative">
+                                    <input
+                                        type="text"
+                                        value={inputText}
+                                        onChange={(e) => setInputText(e.target.value)}
+                                        onKeyPress={handleKeyPress}
+                                        placeholder="Ask AI anything..."
+                                        className="w-full bg-slate-50 border border-slate-200 text-slate-900 text-sm rounded-2xl focus:ring-2 focus:ring-green-500/20 focus:border-green-500 block p-3 px-4 outline-none transition-all placeholder:text-slate-400"
+                                    />
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+                                        <HelpCircle size={16} />
+                                    </div>
+                                </div>
                                 <button
                                     onClick={handleSend}
                                     disabled={!inputText.trim()}
-                                    className="p-2.5 bg-green-600 text-white rounded-full hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+                                    className="p-3 bg-green-700 text-white rounded-2xl hover:bg-green-800 disabled:opacity-40 disabled:grayscale transition-all shadow-lg shadow-green-900/10 active:scale-95"
                                 >
-                                    <Send size={18} />
+                                    <Send size={20} />
                                 </button>
                             </div>
                         </div>
@@ -251,6 +280,7 @@ const ChatBot = ({ userId }) => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setIsOpen(true)}
+                    data-chatbot-toggle="true"
                     className="bg-gradient-to-r from-green-600 to-green-500 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-shadow flex items-center gap-2 group"
                 >
                     <div className="relative">

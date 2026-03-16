@@ -38,6 +38,8 @@ from handlers.navigation import (
     handle_nav_cart, handle_nav_orders, handle_nav_logout,
     handle_nav_login, handle_nav_home
 )
+from handlers.performance import get_ai_performance_intelligence, trigger_ai_training
+from handlers.entity import get_user_profile_summary, get_customer_plans_info, get_general_entity_info
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -315,6 +317,24 @@ def chat():
                 return jsonify({'type': 'text', 'message': "🚚 The dispatch system is currently unreachable."})
             except Exception as e:
                 return jsonify({'type': 'text', 'message': "🚚 Error connecting to the dispatch engine."})
+
+        elif intent == 'ai_performance':
+            return jsonify(get_ai_performance_intelligence(user_id))
+
+        elif intent == 'ai_train':
+            return jsonify(trigger_ai_training(user_id))
+
+        elif intent == 'profile_inquiry':
+            return jsonify(get_user_profile_summary(user_id))
+            
+        elif intent == 'plan_inquiry':
+            return jsonify(get_customer_plans_info(user_id))
+            
+        elif intent == 'general_info_seller':
+            return jsonify(get_general_entity_info('seller'))
+            
+        elif intent == 'general_info_agent':
+            return jsonify(get_general_entity_info('agent'))
 
         # Miscellaneous handlers
         elif intent == 'help': return jsonify(handle_help())

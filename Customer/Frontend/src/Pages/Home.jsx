@@ -119,7 +119,7 @@ function Home() {
             const name = String(product.productName || '').toLowerCase();
             const desc = String(product.description || '').toLowerCase();
             const cat = String(product.category || 'other').toLowerCase();
-            
+
             let score = 0;
             if (!term) {
                 score = 1;
@@ -258,6 +258,8 @@ function Home() {
                     <p className="text-lg text-gray-500 mb-8">
                         Join the smart fresh product delivery system
                     </p>
+
+
                 </div>
 
 
@@ -346,7 +348,7 @@ function Home() {
                                     </svg>
                                 </div>
                                 {searchTerm && (
-                                    <button 
+                                    <button
                                         onClick={() => setSearchTerm('')}
                                         className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
                                     >

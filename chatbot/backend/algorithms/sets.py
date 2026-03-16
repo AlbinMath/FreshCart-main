@@ -35,6 +35,13 @@ SET_REPORT      = {'report', 'issue', 'problem', 'problematic', 'wrong', 'mistak
 SET_TAX         = {'tax', 'taxes', 'gst', 'vat', 'charge', 'charges', 'billing'}
 SET_POLICY      = {'policy', 'policies', 'refund', 'return', 'cancellation', 'cancel', 'returnable', 'guarantee'}
 SET_TRACKING    = {'track', 'tracking', 'where is my', 'order status', 'live', 'location', 'map', 'agent'}
+SET_AI_PERFORMANCE = {
+    'performance', 'intelligence', 'svm', 'analysis', 'success rate', 
+    'failure rate', 'cancellation rate', 'evaluation', 'tier', 
+    'ranking', 'store quality', 'fulfillment', 'insights'
+}
+SET_ENTITY_INFO = {'who is', 'about the', 'details of', 'information about', 'profile', 'account info', 'my details'}
+SET_PLANS = {'plan', 'plans', 'subscription', 'subscriptions', 'premium', 'membership'}
 SET_NON_FOOD    = {
     'gold','silver','jewelry','jewellery','diamond','electronics',
     'mobile','phone','laptop','computer','tv','television','furniture',

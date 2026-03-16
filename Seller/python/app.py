@@ -8,28 +8,37 @@ from SVM.seller_evaluator import SellerEvaluator
 from SVM.train_model import train_svm
 import traceback
 
+import time
+import datetime as dt
+
 # Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
+# Initialize MongoDB Clients globally to avoid repeated DNS resolution and connection overhead
+MONGODB_URI_Products = os.getenv("MONGODB_URI_Products")
+MONGODB_URI_Users = os.getenv("MONGODB_URI_Users")
+
+# Set serverSelectionTimeoutMS to a slightly higher value for stability
+_p_client = MongoClient(MONGODB_URI_Products, serverSelectionTimeoutMS=5000)
+_u_client = MongoClient(MONGODB_URI_Users, serverSelectionTimeoutMS=5000)
+
 # Initialize Evaluator
 evaluator = SellerEvaluator()
 
-# Simple in-memory cache
-performance_cache = {}
+# Simple in-memory cache for seller performance data
+SELLER_PERFORMANCE_CACHE = {}
 CACHE_TIMEOUT = 300 # 5 minutes
 
 def get_dbs():
+    """Returns persistent database instances."""
     try:
-        p_uri = os.getenv("MONGODB_URI_Products")
-        u_uri = os.getenv("MONGODB_URI_Users")
-        p_client = MongoClient(p_uri, serverSelectionTimeoutMS=2000)
-        u_client = MongoClient(u_uri, serverSelectionTimeoutMS=2000)
-        return p_client.get_database(), u_client.get_database()
+        # Pymongo clients are thread-safe and handle reconnection automatically
+        return _p_client.get_database(), _u_client.get_database()
     except Exception as e:
-        print(f"DB Connection Error: {e}")
+        print(f"DB Access Error: {e}")
         return None, None
 
 @app.route('/health', methods=['GET'])
@@ -46,9 +55,8 @@ def evaluate_seller(seller_id):
         # Debugging: Log the request
         print(f"Evaluation requested for seller: {seller_id}")
         # Check cache for faster loading
-        import time
-        if seller_id in performance_cache:
-            cached_data, timestamp = performance_cache[seller_id]
+        if seller_id in SELLER_PERFORMANCE_CACHE:
+            cached_data, timestamp = SELLER_PERFORMANCE_CACHE[seller_id]
             if time.time() - timestamp < CACHE_TIMEOUT:
                 return jsonify(cached_data)
 
@@ -204,7 +212,6 @@ def evaluate_seller(seller_id):
         # Get model last updated time
         model_updated_at = "Unknown"
         if os.path.exists(evaluator.model_path):
-            import datetime as dt
             mtime = os.path.getmtime(evaluator.model_path)
             model_updated_at = dt.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M')
 
@@ -301,7 +308,7 @@ def evaluate_seller(seller_id):
         }
         
         # Save to cache
-        performance_cache[seller_id] = (response_data, time.time())
+        SELLER_PERFORMANCE_CACHE[seller_id] = (response_data, time.time())
         
         return jsonify(response_data)
 

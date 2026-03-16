@@ -28,12 +28,22 @@ try:
     _chatbot_db        = _chatbot_client['ChatBot']
     faqs_collection           = _chatbot_db['faqs']
 
-    # Users DB  (Customer login info)
+    # Users DB (Login info & Roles)
     _users_client      = MongoClient(os.getenv('MONGODB_URI_Users'))
     _users_db          = _users_client['Users']
+    users_collection          = _users_db['Users'] # Central collection (might be empty)
     customer_collection       = _users_db['Customer']
+    customer_plans_collection  = _users_db['CustomerPlans'] # Purchase history
+    seller_info_collection     = _users_db['Seller'] # Profile info in Users DB
+    delivery_agents_collection = _users_db['Deliveryagent']
+    admin_users_collection     = _users_db['Administrator']
 
-    # Customer DB  (Cart, Addresses)
+    # Admin DB (Global Plans & Settings)
+    # Using AdministratorData database for plan templates
+    _admin_db = _users_client['AdministratorData']
+    premium_plans_collection = _admin_db['premiumplans']
+
+    # Customer DB (Cart, Addresses)
     _customer_client   = MongoClient(os.getenv('MONGODB_URI_Customer'))
     _customer_db       = _customer_client['Customer']
     cart_collection           = _customer_db['Cart']
@@ -57,16 +67,16 @@ try:
     # Notifications (stored in Products DB as per Seller Backend Notification.js)
     notifications_collection   = _products_db['notifications']
 
-    print("✅ [DB] Connected to all databases successfully!")
-    print("   📦 Products DB : products, Orders, Reviews, notifications")
-    print("   🤖 ChatBot DB  : faqs")
-    print("   👥 Users DB    : Customer, Deliveryagent, deliverylocationlogs")
-    print("   🛒 Customer DB : Cart, address")
-    print("   📢 Announcements DB : reports")
-    print("   🏪 Seller DB   : sellers, stores")
+    print("[DB] Connected to all databases successfully!")
+    print("   Products DB : products, Orders, Reviews, notifications")
+    print("   ChatBot DB  : faqs")
+    print("   Users DB    : Customer, Deliveryagent, deliverylocationlogs")
+    print("   Customer DB : Cart, address")
+    print("   Announcements DB : reports")
+    print("   Seller DB   : sellers, stores")
 
 except Exception as e:
-    print(f"❌ [DB] Connection error: {e}")
+    print(f"[DB] Connection error: {e}")
     raise
 
 # --------------------------------------------------------------------------- #

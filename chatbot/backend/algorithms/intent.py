@@ -11,6 +11,8 @@ from algorithms.sets import (
     SET_NUTRITION, SET_CATEGORY, SET_STOCK_KW, SET_PRODUCT_KW,
     SET_REVIEW_KW, SET_NON_FOOD, SET_FOOD_ITEMS,
     SET_ADDRESS, SET_NOTIF, SET_REPORT, SET_TAX, SET_POLICY, SET_TRACKING,
+    SET_AI_PERFORMANCE,
+    SET_PLANS, SET_ENTITY_INFO,
     tokenize, set_match, phrase_match, extract_compare_products
 )
 
@@ -97,7 +99,15 @@ def classify_intent(message: str) -> str:
     if set_match(tok, SET_CATEGORY) and set_match(tok, _browse):
         return 'category_browse'
 
-    # 6 ── STANDARD INTENTS ─────────────────────────────────────────────────
+    # 5.5 -- ENTITY & PLAN INTENTS (Moved up for priority) ------------------
+    if set_match(tok, SET_PLANS):
+        return 'plan_inquiry'
+    
+    if phrase_match(ml, {'my profile', 'my account', 'my details', 'who am i', 'me', 'who i am', 'who i'}):
+        return 'profile_inquiry'
+        
+    if ml == 'i' or ml == 'am i':
+        return 'profile_inquiry'
     if set_match(tok, SET_STOCK_KW) or phrase_match(ml, {'in stock','out of stock','how many','quantity available'}):
         return 'stock_inquiry'
 
@@ -152,6 +162,23 @@ def classify_intent(message: str) -> str:
     if phrase_match(ml, {'dispatch', 'pending dispatch', 'dispatch queue', 'how many orders are pending', 'dispatch status'}):
         return 'dispatch_inquiry'
 
+    # 7 -- AI & PERFORMANCE INTENTS -------------------------------------------
+    if set_match(tok, SET_AI_PERFORMANCE) or phrase_match(ml, {'how is my store', 'store evaluation', 'my performance', 'ai insights'}):
+        return 'ai_performance'
+    
+    if phrase_match(ml, {'train ai', 'update ai', 'retrain svm', 'train model', 'update intelligence'}):
+        return 'ai_train'
+
+    # Removed - moved up
+
+    if set_match(tok, {'agent', 'delivery partner', 'delivery guy'}) and wc <= 4:
+        if set_match(tok, {'how many', 'about'}):
+            return 'general_info_agent'
+        return 'delivery_inquiry'
+
+    if phrase_match(ml, {'about sellers', 'who are the sellers', 'how many sellers'}):
+        return 'general_info_seller'
+
     # Non-food:  tokens in non-food set BUT none from food set (set difference)
     if (tok & SET_NON_FOOD) and not (tok & SET_FOOD_ITEMS):
         return 'non_food_product'
@@ -169,8 +196,8 @@ def classify_intent(message: str) -> str:
     if tok & SET_FOOD_ITEMS:
         return 'product_search'
 
-    # Single meaningful word → try product search
-    if wc == 1 and len(ml) > 2:
+    # Single meaningful word → try product search (avoid tiny words like 'i', 'who', 'me')
+    if wc == 1 and len(ml) >= 4:
         return 'product_search'
 
     return 'faq'

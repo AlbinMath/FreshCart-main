@@ -28,8 +28,15 @@ NUTRITION_DB = {
 def search_faq(query):
     """Search FAQ database for matching questions"""
     try:
-        # Try exact match first
-        faq = faqs_collection.find_one({'question': {'$regex': query, '$options': 'i'}})
+        # Try exact match first (case-insensitive)
+        if len(query.strip()) <= 3:
+            # For short queries, avoid partial regex matches
+            import re
+            faq = faqs_collection.find_one({'question': {'$regex': f'^\\s*{re.escape(query)}\\s*$', '$options': 'i'}})
+        else:
+            # For longer queries, allow regex substring match
+            faq = faqs_collection.find_one({'question': {'$regex': query, '$options': 'i'}})
+
         if faq:
             return faq['answer']
         
@@ -98,11 +105,10 @@ def handle_help():
             '• View cart: "my cart"\n' +
             '• Track: "status", "live track my order"\n' +
             '• Order history: "history"\n\n' +
-            '👤 **Profile & Support** 🆕\n' +
-            '• Addresses: "my address", "delivery location"\n' +
-            '• Notifications: "any alerts?", "messages"\n' +
-            '• Support: "report an issue", "track my ticket"\n' +
-            '• Info: "refund policy", "tax info", "cancellation"\n\n' +
+            '👤 **Personal & Plans** 🆕\n' +
+            '• Membership: "what are the plans?", "premium plans"\n' +
+            '• My Account: "my profile", "who am i"\n' +
+            '• Support: "report an issue", "track my ticket"\n\n' +
             '🚚 **Delivery Info**\n' +
             '• Delivery time: 30-45 minutes\n' +
             '• Free delivery above ₹199\n' +
@@ -111,5 +117,9 @@ def handle_help():
             '🤝 **Join Us**\n' +
             '• Become a Seller: "sell"\n' +
             '• Become Delivery Agent: "become agent"\n\n' +
+            '🧠 **AI Performance Intelligence** (Sellers Only) 🚀\n' +
+            '• Analysis: "my performance", "store evaluation"\n' +
+            '• Feedback: "customer feedback analysis"\n' +
+            '• Train: "update ai", "train model"\n\n' +
             '💬 Just ask me anything!'
     }
