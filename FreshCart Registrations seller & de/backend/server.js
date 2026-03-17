@@ -28,7 +28,8 @@ app.use(helmet());
 app.use(cors({
   origin: [
     'http://localhost:5173',
-    'http://localhost:5174'
+    'http://localhost:5174',
+    'https://fresh-cart-main-6cex.vercel.app'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],

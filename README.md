@@ -35,6 +35,16 @@ The platform is designed for scalability, featuring specialized portals for ever
 
 ---
 
+## 🌐 Hosted Links
+
+| Portal | URL |
+| :--- | :--- |
+| **Admin Frontend** | [https://fresh-cart-main-6cex.vercel.app/](https://fresh-cart-main-6cex.vercel.app/) |
+| **Tax Backend** | [https://fresh-cart-main-blond.vercel.app/](https://fresh-cart-main-blond.vercel.app/) |
+| **Shared Order Integrity** | [https://fresh-cart-main-4ycz.vercel.app/](https://fresh-cart-main-4ycz.vercel.app/) |
+
+---
+
 ## 🏗️ Technical Architecture
 
 ### **Frontend Excellence**
