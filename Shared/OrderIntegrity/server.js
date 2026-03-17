@@ -9,6 +9,10 @@ const PORT = process.env.PORT || 5011;
 app.use(cors());
 app.use(bodyParser.json());
 
+app.get('/', (req, res) => {
+    res.send('Order Integrity Service is running. Use /health for status.');
+});
+
 // Health Check
 app.get('/health', (req, res) => {
     res.json({ status: 'UP', service: 'Order Integrity Service', timestamp: new Date() });

@@ -6,6 +6,14 @@ from routing import optimize_route
 
 app = FastAPI(title="IDS Clustering Engine")
 
+@app.get("/")
+async def root():
+    return {"message": "IDS Clustering Engine is running. Use /docs or /health for info."}
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy", "service": "IDS Clustering Engine"}
+
 class Order(BaseModel):
     id: str
     longitude: float

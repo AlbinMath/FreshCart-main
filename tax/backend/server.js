@@ -17,6 +17,9 @@ const connectDB = require('./config/db');
 connectDB();
 
 // Routes
+app.get('/', (req, res) => {
+    res.send('Tax Calculation Service is running. Use /health for status.');
+});
 app.use('/api/v1/tax', taxRoutes);
 
 // Health Check

@@ -46,6 +46,10 @@ app = Flask(__name__)
 CORS(app)
 load_dotenv()
 
+@app.route('/')
+def home():
+    return "FreshCart Chatbot Backend is running. Use /health for status."
+
 @app.route('/api/chat', methods=['POST'])
 def chat():
     """Main chat endpoint with modularized intelligence"""

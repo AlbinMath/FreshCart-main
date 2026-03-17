@@ -18,6 +18,14 @@ app.use('/api/orders', require('./routes/orders'));
 app.use('/api/agents', require('./routes/agents'));
 app.use('/api/dispatch', require('./routes/dispatch'));
 
+app.get('/', (req, res) => {
+    res.send('IDS Core API is running. Use /health for status.');
+});
+
+app.get('/health', (req, res) => {
+    res.json({ status: 'OK', service: 'IDS Core API' });
+});
+
 // WebSocket for real-time tracking
 io.on('connection', (socket) => {
     console.log('A client connected', socket.id);
