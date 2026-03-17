@@ -1,13 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const CustomerProduceProposal = require('../models/CustomerProduceProposal');
-// We will need to interact with the C2B orders. Since we put the schema in Shared/OrderIntegrity, we need to create a model for it using customerConn or productsConn here.
-const { customerConn } = require('../server');
-const c2bOrderSchemaOptions = require('../../../Shared/OrderIntegrity/models/C2B_OrderSchema');
-const withdrawalRequestSchema = require('../models/WithdrawalRequest');
-
-const C2B_Order = customerConn.model('C2B_Order', c2bOrderSchemaOptions(require('mongoose')));
-const WithdrawalRequest = customerConn.model('WithdrawalRequest', withdrawalRequestSchema);
+const { customerConn } = require('../db');
+const C2B_Order = require('../models/C2B_Order');
+const WithdrawalRequest = require('../models/WithdrawalRequestModel');
 const Notification = require('../models/Notification');
 
 // Note: Assuming there is some auth middleware that sets req.user.uid. We will use a mock or standard middleware if it exists.
