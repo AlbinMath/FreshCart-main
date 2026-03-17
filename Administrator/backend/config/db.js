@@ -13,7 +13,6 @@ const connectDB = async () => {
         console.log('MongoDB Connected to Users Database');
     } catch (err) {
         console.error('MongoDB Users Connection Error:', err);
-        process.exit(1);
     }
 };
 

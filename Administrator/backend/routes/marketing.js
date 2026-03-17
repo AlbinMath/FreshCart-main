@@ -6,7 +6,7 @@ const Bundle = require('../models/Bundle');
 const Product = require('../models/Product');
 const cloudinary = require('cloudinary').v2;
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ dest: '/tmp/' });
 const fs = require('fs');
 
 // Configure Cloudinary

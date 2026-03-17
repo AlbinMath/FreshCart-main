@@ -20,11 +20,7 @@ if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !pr
 // Multer Config (Temp storage)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        // Ensure 'uploads' directory exists or use /tmp
-        const dir = './uploads';
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir);
-        }
+        const dir = '/tmp';
         cb(null, dir);
     },
     filename: function (req, file, cb) {
