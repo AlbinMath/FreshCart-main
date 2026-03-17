@@ -4,10 +4,10 @@ const { customerConn, productsConn } = require('../config/db');
 const mongoose = require('mongoose');
 
 // Define Models for existing schemas
-const c2bOrderSchemaOptions = require('../../../Shared/OrderIntegrity/models/C2B_OrderSchema');
+const c2bOrderSchemaOptions = require('../models/C2B_OrderSchema');
 const C2B_Order = customerConn.models.C2B_Order || customerConn.model('C2B_Order', c2bOrderSchemaOptions(mongoose));
 
-const withdrawalRequestSchema = require('../../../Customer/Backend/models/WithdrawalRequest');
+const withdrawalRequestSchema = require('../models/WithdrawalRequest');
 const WithdrawalRequest = customerConn.models.WithdrawalRequest || customerConn.model('WithdrawalRequest', withdrawalRequestSchema);
 
 // User models from default connection
