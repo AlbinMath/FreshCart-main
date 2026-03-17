@@ -10,10 +10,10 @@ const razorpay = new Razorpay({
 });
 
 // Define Models for existing schemas across different DBs
-const c2bOrderSchemaOptions = require('../../../Shared/OrderIntegrity/models/C2B_OrderSchema');
+const c2bOrderSchemaOptions = require('../models/C2B_OrderSchema');
 const C2B_Order = customerConn.models.C2B_Order || customerConn.model('C2B_Order', c2bOrderSchemaOptions(mongoose));
 
-const withdrawalRequestSchema = require('../../../Customer/Backend/models/WithdrawalRequest');
+const withdrawalRequestSchema = require('../models/WithdrawalRequest');
 const WithdrawalRequest = customerConn.models.WithdrawalRequest || customerConn.model('WithdrawalRequest', withdrawalRequestSchema);
 
 const CustomerPlan = require('../models/CustomerPlan');
