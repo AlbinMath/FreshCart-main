@@ -43,9 +43,20 @@ def analyze_review_text(reviews):
         
     return summary, sentiment, avg_polarity
 
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify({
+        "message": "FreshCart AI Recommendation Service is online",
+        "endpoints": ["/recommend (POST)", "/analyze-reviews (POST)", "/health (GET)"]
+    })
+
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok", "service": "FreshCart AI"})
+
+@app.route('/favicon.ico', methods=['GET'])
+def favicon():
+    return '', 204
 
 @app.route('/recommend', methods=['POST', 'OPTIONS'])
 def recommend():
