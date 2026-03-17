@@ -7,7 +7,10 @@ const app = express();
 const PORT = process.env.PORT || 5003;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: 'https://fresh-cart-main-6cex.vercel.app',
+    credentials: true
+}));
 app.use(express.json());
 
 // Database Connection
