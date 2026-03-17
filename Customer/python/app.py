@@ -5,6 +5,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import nltk
+nltk.download('punkt')
+nltk.download('punkt_tab')
+nltk.download('brown')
+nltk.download('averaged_perceptron_tagger')
+
 app = Flask(__name__)
 CORS(app)
 
