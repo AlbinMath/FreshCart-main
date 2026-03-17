@@ -1,0 +1,9 @@
+{
+    "name": "freshcart-registrations-frontend",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}
