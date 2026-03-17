@@ -5,14 +5,23 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import nltk
-nltk.download('punkt')
-nltk.download('punkt_tab')
-nltk.download('brown')
-nltk.download('averaged_perceptron_tagger')
-
 app = Flask(__name__)
 CORS(app)
+
+# Ensure NLTK data is available for TextBlob
+import nltk
+try:
+    nltk.download('punkt', quiet=True)
+    nltk.download('punkt_tab', quiet=True)
+except Exception as e:
+    print(f"NLTK download warning: {e}")
+
+@app.route('/', methods=['GET'])
+def index():
+    return jsonify({
+        "message": "FreshCart AI KNN Service is Running",
+        "endpoints": ["/health", "/recommend", "/analyze-reviews"]
+    })
 
 # Lazy loading to avoid MemoryError on startup
 def get_recommendations_from_engine(user_id, limit):
@@ -49,20 +58,9 @@ def analyze_review_text(reviews):
         
     return summary, sentiment, avg_polarity
 
-@app.route('/', methods=['GET'])
-def index():
-    return jsonify({
-        "message": "FreshCart AI Recommendation Service is online",
-        "endpoints": ["/recommend (POST)", "/analyze-reviews (POST)", "/health (GET)"]
-    })
-
 @app.route('/health', methods=['GET'])
 def health():
     return jsonify({"status": "ok", "service": "FreshCart AI"})
-
-@app.route('/favicon.ico', methods=['GET'])
-def favicon():
-    return '', 204
 
 @app.route('/recommend', methods=['POST', 'OPTIONS'])
 def recommend():
