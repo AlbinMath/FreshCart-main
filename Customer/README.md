@@ -1,5 +1,7 @@
 # 🛒 FreshCart Customer Portal
 
+**Live Demo:** [fresh-cart-main-ztg2.vercel.app](https://fresh-cart-main-ztg2.vercel.app/)
+
 The flagship storefront of FreshCart. A high-performance, responsive e-commerce application designed for a premium shopping experience.
 
 ## ✨ Features

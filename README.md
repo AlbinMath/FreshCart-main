@@ -42,6 +42,7 @@ The platform is designed for scalability, featuring specialized portals for ever
 | **Admin Frontend** | [https://fresh-cart-main-6cex.vercel.app/](https://fresh-cart-main-6cex.vercel.app/) |
 | **Tax Backend** | [https://fresh-cart-main-blond.vercel.app/](https://fresh-cart-main-blond.vercel.app/) |
 | **Shared Order Integrity** | [https://fresh-cart-main-4ycz.vercel.app/](https://fresh-cart-main-4ycz.vercel.app/) |
+| **AI Chatbot** | [https://fresh-cart-main-3cvf.vercel.app/](https://fresh-cart-main-3cvf.vercel.app/) |
 
 ---
 
