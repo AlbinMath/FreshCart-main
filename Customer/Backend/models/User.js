@@ -1,6 +1,6 @@
 // models/User.js
 const mongoose = require('mongoose');
-const { usersConn } = require('../server');
+const { usersConn } = require('../db');
 
 const userSchema = new mongoose.Schema({
     uid: { type: String, required: true, unique: true },

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { usersConn } = require('../server');
+const { usersConn } = require('../db');
 
 const notificationSchema = new mongoose.Schema({
     title: {

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { productsConn } = require('../server');
+const { productsConn } = require('../db');
 
 const flashSaleSchema = new mongoose.Schema({
     sellerId: {

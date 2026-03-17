@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { adminConn } = require('../server');
+const { adminConn } = require('../db');
 
 const PremiumPlanSchema = new mongoose.Schema({
     type: { type: String, enum: ['seller', 'customer'], required: true },

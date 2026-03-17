@@ -1,6 +1,6 @@
 // models/PaymentDetail.js
 const mongoose = require('mongoose');
-const { customerConn } = require('../server');
+const { customerConn } = require('../db');
 
 const paymentDetailSchema = new mongoose.Schema({
     uid: { type: String, required: true }, // reference to user uid

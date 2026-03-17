@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { usersConn } = require('../server'); // Using users connection since Customer is part of it
+const { usersConn } = require('../db'); // Using users connection since Customer is part of it
 
 const CustomerPlanSchema = new mongoose.Schema({
     userId: {

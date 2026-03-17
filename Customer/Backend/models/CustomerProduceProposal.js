@@ -1,6 +1,6 @@
 // models/CustomerProduceProposal.js
 const mongoose = require('mongoose');
-const { customerConn } = require('../server'); // Using the Customer DB connection
+const { customerConn } = require('../db'); // Using the Customer DB connection
 
 const customerProduceProposalSchema = new mongoose.Schema({
     customer_id: {

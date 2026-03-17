@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { productsConn } = require('../server');
+const { productsConn } = require('../db');
 
 const couponSchema = new mongoose.Schema({
     sellerId: {

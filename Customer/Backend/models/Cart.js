@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { customerConn } = require('../server');
+const { customerConn } = require('../db');
 
 const cartSchema = new mongoose.Schema({
     userId: { type: String, required: true },

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { productsConn } = require('../server');
+const { productsConn } = require('../db');
 
 const productSchema = new mongoose.Schema({
     productName: { type: String, required: true },

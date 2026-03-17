@@ -1,6 +1,6 @@
 // models/Address.js
 const mongoose = require('mongoose');
-const { customerConn } = require('../server');
+const { customerConn } = require('../db');
 
 const addressSchema = new mongoose.Schema({
     uid: { type: String, required: true }, // reference to user uid

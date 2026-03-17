@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { chatbotConn } = require('../server');
+const { chatbotConn } = require('../db');
 
 const faqSchema = new mongoose.Schema({
     question: { type: String, required: true },

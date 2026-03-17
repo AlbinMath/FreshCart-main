@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { announcementsConn } = require('../server');
+const { announcementsConn } = require('../db');
 
 const reportSchema = new mongoose.Schema({
     userId: {
