@@ -48,73 +48,61 @@ app.use('/api/marketing', require('./routes/marketing'));
 app.use('/api/sourcing', require('./routes/sourcingRoutes'));
 app.use('/api/withdrawals', require('./routes/withdrawal'));
 
-// Start Server
-connectDB().then(() => {
-    const server = http.createServer(app);
-    const io = new Server(server, {
-        cors: {
-            origin: "*", // Allow all origins (update for production if needed)
-            methods: ["GET", "POST"]
-        }
-    });
-
-    // Socket.io Logic
-    io.on('connection', (socket) => {
-        console.log(`User Connected: ${socket.id}`);
-
-        socket.on('join_seller_room', (sellerId) => {
-            if (sellerId) {
-                socket.join(sellerId);
-                console.log(`User with ID: ${socket.id} joined room: ${sellerId}`);
+// Start Server (only if not on Netlify)
+if (process.env.NODE_ENV !== 'production' || !process.env.NETLIFY) {
+    connectDB().then(() => {
+        const server = http.createServer(app);
+        const io = new Server(server, {
+            cors: {
+                origin: "*", 
+                methods: ["GET", "POST"]
             }
         });
 
-        socket.on('disconnect', () => {
-            console.log("User Disconnected", socket.id);
-        });
-    });
-
-    // MongoDB Change Stream for Real-time Notifications
-    try {
-        const changeStream = Order.watch();
-
-        changeStream.on('change', (change) => {
-            if (change.operationType === 'insert') {
-                const orderDetails = change.fullDocument;
-
-                // Notify each seller involved in the order
-                if (orderDetails.items && orderDetails.items.length > 0) {
-                    // Get unique seller IDs from the order
-                    const sellerIds = [...new Set(orderDetails.items.map(item => item.sellerId))];
-
-                    sellerIds.forEach(sellerId => {
-                        // Create notification payload
-                        const notification = {
-                            id: Date.now() + Math.random(), // Unique ID
-                            type: 'info',
-                            title: 'New Order Received',
-                            description: `Order #${orderDetails._id.toString().slice(-6)} has been placed.`,
-                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                            read: false,
-                            orderId: orderDetails._id
-                        };
-
-                        io.to(sellerId).emit('newOrder', notification);
-                        console.log(`Notification sent to seller: ${sellerId}`);
-                    });
+        // Socket.io Logic
+        io.on('connection', (socket) => {
+            console.log(`User Connected: ${socket.id}`);
+            socket.on('join_seller_room', (sellerId) => {
+                if (sellerId) {
+                    socket.join(sellerId);
+                    console.log(`User joined room: ${sellerId}`);
                 }
-            }
+            });
+            socket.on('disconnect', () => console.log("User Disconnected", socket.id));
         });
 
-        changeStream.on('error', (error) => {
-            console.error('Change Stream Error:', error);
-        });
+        // MongoDB Change Stream for Real-time Notifications
+        try {
+            const changeStream = Order.watch();
+            changeStream.on('change', (change) => {
+                if (change.operationType === 'insert') {
+                    const orderDetails = change.fullDocument;
+                    if (orderDetails.items && orderDetails.items.length > 0) {
+                        const sellerIds = [...new Set(orderDetails.items.map(item => item.sellerId))];
+                        sellerIds.forEach(sellerId => {
+                            const notification = {
+                                id: Date.now() + Math.random(),
+                                type: 'info',
+                                title: 'New Order Received',
+                                description: `Order #${orderDetails._id.toString().slice(-6)} has been placed.`,
+                                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                read: false,
+                                orderId: orderDetails._id
+                            };
+                            io.to(sellerId).emit('newOrder', notification);
+                        });
+                    }
+                }
+            });
+            changeStream.on('error', (error) => console.error('Change Stream Error:', error));
+        } catch (e) {
+            console.error("Failed to setup change stream", e);
+        }
 
-    } catch (e) {
-        console.error("Failed to setup change stream", e);
-    }
-
-    server.listen(PORT, () => {
-        console.log(`Server running on port ${PORT}`);
+        server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
     });
-});
+}
+
+// Export app and DB logic for serverless
+module.exports = app;
+module.exports.connectDB = connectDB;
