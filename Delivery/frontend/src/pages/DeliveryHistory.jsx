@@ -28,7 +28,7 @@ const DeliveryHistory = () => {
 
     const fetchHistory = async () => {
         try {
-            const response = await axios.get(`http://localhost:5007/api/delivery-agent/history/${agentId}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_URL}/history/${agentId}`);
             if (response.data && Array.isArray(response.data)) {
                 setHistory(response.data);
             }

@@ -10,13 +10,31 @@
   [![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)](https://www.mongodb.com/)
 </div>
 
----
+## 📖 Project Overview
 
-## 📖 Overview
+The project titled **“FreshCart”** is an innovative web-based platform designed to connect local fresh product sellers with customers through a seamless, technology-driven marketplace. FreshCart aims to digitalize the buying and selling of fresh items—including vegetables, fruits, dairy products, and meats—ensuring timely delivery, transparency, and convenience for all stakeholders.
 
-**FreshCart** is a sophisticated, modular e-commerce ecosystem built with a microservices-oriented architecture. It provides a seamless experience for customers, efficient tools for sellers, a robust dispatch system for delivery agents, and comprehensive oversight for administrators.
+In many neighborhoods, customers face challenges in obtaining fresh, high-quality products due to limited availability, fluctuating prices, and minimal direct interaction with sellers. Similarly, small-scale sellers and farmers struggle to reach a wider customer base and manage their sales efficiently. FreshCart addresses these challenges by offering a unified, community-oriented e-commerce solution that empowers both sellers and consumers.
 
-The platform is designed for scalability, featuring specialized portals for every stakeholder and an **Intelligent Dispatch System (IDS)** that optimizes logistics through advanced geospatial clustering.
+The platform enables customers to explore a wide range of fresh products, categorized with intuitive filters and search functionalities. Users can easily add items to their shopping cart, manage quantities, and complete secure checkout using multiple payment options. Real-time order tracking and delivery status updates enhance transparency and customer satisfaction, while integrated feedback and rating systems ensure consistent product quality and service reliability.
+
+A standout feature of FreshCart is its **dual-role capability**, allowing customers to also act as sellers. Users can list their own fresh or homemade products for sale to nearby buyers, promoting local entrepreneurship and sustainable commerce. This feature reduces reliance on large distributors, strengthens community engagement, and fosters a vibrant, hyperlocal marketplace.
+
+Security and authentication are integral to FreshCart. The system employs **multi-factor authentication (MFA)**, role-based access control, email verification, and JWT-based session management. Sensitive information is safeguarded with bcrypt encryption, and robust validation mechanisms ensure the accuracy of business registration details and product information.
+
+The **Admin Panel** serves as the central control hub, enabling administrators to manage users, monitor system activity, approve new sellers or stores, verify documents, and moderate content. Real-time analytics and performance statistics support informed decision-making and operational efficiency.
+
+The **Seller Module** provides tools for managing stores, listing products, tracking inventory, and analyzing sales. Sellers can update stock levels, manage incoming orders, define business hours, and monitor revenue trends via an interactive dashboard.
+
+The **Customer Module** emphasizes a smooth shopping experience. Users can manage personal information, multiple delivery addresses, password settings, order history, and receive personalized product recommendations based on prior purchases. The module also allows customers to list products for sale to local buyers, seamlessly integrating the buying and selling experience within the same platform.
+
+FreshCart’s **Delivery System** incorporates real-time tracking and verification. Delivery agents are authenticated using license and vehicle registration details, and order completion is confirmed with an **OTP-based system** to ensure accountability and reliability.
+
+Technically, the platform leverages modern web technologies. The frontend is built with **React 18 and Vite** for high-speed rendering, **Tailwind CSS** for responsive design, and **React Router** for client-side navigation. Real-time updates use **WebSocket and Socket.IO**, while form validation and state management are handled through **Formik, Yup, and React Query**. The backend is powered by **Node.js and Express**, with **MongoDB and Mongoose** for data storage and modeling.
+
+FreshCart follows a **monorepo architecture** with separate frontend and backend directories, promoting modularity and maintainability. Additional security measures include API rate limiting, CORS, and CSRF protection, ensuring a reliable and secure platform.
+
+In summary, FreshCart is more than an online delivery app—it is a smart local commerce ecosystem that modernizes the way people buy and sell fresh products. By connecting producers directly to consumers and enabling customers to sell to nearby buyers, FreshCart enhances product freshness, operational transparency, and community-driven commerce, fostering sustainable economic growth in local neighbourhoods.
 
 ---
 
@@ -24,14 +42,14 @@ The platform is designed for scalability, featuring specialized portals for ever
 
 | Portal / Service | Description | Links |
 | :--- | :--- | :--- |
-| **[Customer Portal](./Customer)** | High-performance storefront with KNN-based recommendations, Razorpay integration, and a unique "Grower Portal" for C2B sourcing. | [Details](./Customer/README.md) |
-| **[Seller Dashboard](./Seller)** | Comprehensive merchant tool with SVM performance analytics and AI product-level stock suggestions. | [Details](./Seller/README.md) |
+| **[Customer Portal](./Customer)** | High-performance storefront with KNN-based recommendations, Razorpay integration, and a unique **Premium Membership** system. | [Details](./Customer/README.md) |
+| **[Seller Dashboard](./Seller)** | Comprehensive merchant tool with **AI Performance Intelligence (SVM)** and real-time stock forecasting. | [Details](./Seller/README.md) |
+| **[Grower Portal](./Customer)** | Integrated C2B sourcing engine for local farmers and homemade product sellers to reach nearby buyers directly. | [Details](./Customer/README.md) |
 | **[Delivery Hub](./Delivery)** | Real-time tracking, earnings management, and optimized route assignments for agents. | [Details](./Delivery/README.md) |
-| **[Admin Control](./Administrator)** | Centralized platform governance, premium delivery plan management, user/seller approvals, and tax management. | [Details](./Administrator/README.md) |
-| **[IDS (Intelligent Dispatch)](./ids)** | The "brain" of FreshCart. Uses Python/ML (DBSCAN/K-Means) for geospatial order batching. | [Details](./ids/README.md) |
-| **[AI Chatbot](./chatbot)** | Intelligent support assistant handling order inquiries and platform documentation. | [Details](./chatbot/README.md) |
-| **[Tax Microservice](./tax)** | Independent logic for regional GST, TCS, and fee calculations. | [Details](./tax/README.md) |
-| **[Onboarding Portal](./FreshCart%20Registrations%20seller%20&%20de)** | Dedicated landing and registration system for new sellers and delivery partners. | [Details](./FreshCart%20Registrations%20seller%20&%20de/README.md) |
+| **[Admin Control](./Administrator)** | Centralized platform governance, **Premium Delivery Plan** management, and **Marketing Dashboard** (Coupon & Flash Sale) | [Details](./Administrator/README.md) |
+| **[IDS (Intelligent Dispatch)](./ids)** | Advanced geospatial dispatching using ML (DBSCAN/K-Means) for optimized last-mile delivery. | [Details](./ids/README.md) |
+| **[Microservices System](./Shared)** | Includes **Order Integrity (Blockchain Ledger)** for transaction security and a dedicated **Tax Service**. | [Details](./Shared/OrderIntegrity/README.md) |
+| **[AI Support Chatbot](./chatbot)** | Intelligent assistant for automated customer support and system documentation inquiries. | [Details](./chatbot/README.md) |
 
 ---
 
@@ -64,13 +82,15 @@ The platform is designed for scalability, featuring specialized portals for ever
   - **Communications**: Real-time updates via Socket.io (where applicable).
 
 ### **ML & Intelligence Layer**
-- **Language**: Python 3.9+.
+- **Language**: Python 3.9+ / Node.js
 - **Services**:
   - **Intelligent Dispatch (IDS)**: DBSCAN & K-Means for geospatial order batching and terminal optimization.
-  - **Performance Intelligence (SVM)**: Support Vector Machine (RBF kernel) for seller tiering and risk analysis.
-  - **Product Analysis**: Demand forecasting and stock suggestions based on sales velocity and customer sentiment.
-  - **Recommendation Engine (KNN)**: K-Nearest Neighbors algorithm for personalized customer product recommendations.
-- **NLP**: Intent classification for the customer support chatbot handling order queries.
+  - **AI Performance Intelligence (SVM)**: Support Vector Machine (RBF kernel) for seller performance tiering and risk analysis.
+  - **Source Local Produce (Grower Portal)**: C2B sourcing logic for hyperlocal commerce.
+  - **Marketing Analytics**: Coupon system and Flash Sale algorithms for dynamic pricing and inventory management.
+  - **Recommendation Engine (KNN)**: K-Nearest Neighbors for personalized product discovery.
+  - **Order Integrity Service**: Blockchain-inspired hashing and chaining for immutable transaction tracking.
+  - **NLP Chatbot**: Intent-based AI for customer support and platform navigation.
 
 ---
 

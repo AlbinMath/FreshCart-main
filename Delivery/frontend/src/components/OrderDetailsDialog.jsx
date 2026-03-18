@@ -31,7 +31,7 @@ const OrderDetailsDialog = ({ isOpen, onClose, order }) => {
             // Updated to use the correct port if needed, or relative path if proxy set up
             // Assuming standard API structure
             // Using absolute URL to ensure hitting backend port 5007
-            const response = await fetch(`http://localhost:5007/api/delivery-agent/product/${productId}`);
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/product/${productId}`);
             if (response.ok) {
                 const data = await response.json();
                 setSelectedProduct(data);

@@ -56,7 +56,7 @@ const DeliveryCompletionDialog = ({ isOpen, onClose, order, onCompleteSuccess })
             setGeneratedOtp(newOtp);
 
             // 2. Store OTP in Backend (Order Document)
-            await axios.post('http://localhost:5007/api/delivery-agent/active-otp', {
+            await axios.post(`${import.meta.env.VITE_API_URL}/active-otp`, {
                 orderId: order._id,
                 otp: newOtp
             });
@@ -94,7 +94,7 @@ const DeliveryCompletionDialog = ({ isOpen, onClose, order, onCompleteSuccess })
         setCashError(null); // Clear cash errors if any
 
         try {
-            await axios.post('http://localhost:5007/api/delivery-agent/verify-otp', {
+            await axios.post(`${import.meta.env.VITE_API_URL}/verify-otp`, {
                 orderId: order._id,
                 enteredOtp: otp,
                 // Optional: Send collected cash info if backend needs it record keeping

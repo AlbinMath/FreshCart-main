@@ -41,7 +41,7 @@ const DeliveryIcon = L.icon({
 
 L.Marker.prototype.options.icon = DefaultIcon;
 
-const SOCKET_URL = 'http://localhost:5007';
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5007';
 
 // Component to handle map center updates
 const MapUpdater = ({ center, bounds }) => {
@@ -140,8 +140,8 @@ const Tracking = () => {
         const fetchSellers = async () => {
             try {
                 // Adjust URL based on your backend port/env. Assuming standard or from .env if possible
-                // Using hardcoded localhost:5007 for backend API as per context
-                const response = await axios.get('http://localhost:5007/api/delivery-agent/sellers');
+                // Using VITE_API_URL or fallback to localhost
+                const response = await axios.get(`${import.meta.env.VITE_API_URL}/sellers`);
                 const sellerData = response.data;
 
                 // Geocode addresses or use existing lat/long

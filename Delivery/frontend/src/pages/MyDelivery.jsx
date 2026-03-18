@@ -88,7 +88,7 @@ const MyDelivery = () => {
     const fetchTodayStats = async () => {
         if (!agentId) return;
         try {
-            const response = await axios.get(`http://localhost:5007/api/delivery-agent/stats/${agentId}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_URL}/stats/${agentId}`);
             if (response.data) {
                 setTodayStats(response.data);
             }
@@ -100,7 +100,7 @@ const MyDelivery = () => {
     const fetchHistory = async () => {
         if (!agentId) return;
         try {
-            const response = await axios.get(`http://localhost:5007/api/delivery-agent/history/${agentId}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_URL}/history/${agentId}`);
             if (response.data && Array.isArray(response.data)) {
                 setHistory(response.data.slice(0, 10)); // Top 10 only
             }
@@ -112,7 +112,7 @@ const MyDelivery = () => {
     const fetchCurrentDeliveries = async () => {
         if (!agentId) return;
         try {
-            const response = await axios.get(`http://localhost:5007/api/delivery-agent/current-delivery/${agentId}`);
+            const response = await axios.get(`${import.meta.env.VITE_API_URL}/current-delivery/${agentId}`);
             if (response.data && Array.isArray(response.data)) {
                 setCurrentDeliveries(response.data);
             } else {
@@ -142,7 +142,7 @@ const MyDelivery = () => {
             async (position) => {
                 try {
                     const { latitude, longitude } = position.coords;
-                    const response = await axios.post('http://localhost:5007/api/delivery-agent/nearest-shop-order', {
+                    const response = await axios.post(`${import.meta.env.VITE_API_URL}/nearest-shop-order`, {
                         latitude,
                         longitude,
                         agentId
@@ -179,7 +179,7 @@ const MyDelivery = () => {
             const endpoint = isCluster ? '/accept-cluster' : '/accept-order';
             const payload = isCluster ? { clusterId: orderId, agentId } : { orderId, agentId };
 
-            await axios.put(`http://localhost:5007/api/delivery-agent${endpoint}`, payload);
+            await axios.put(`${import.meta.env.VITE_API_URL}${endpoint}`, payload);
 
             setNearestOrder(null); // Remove from nearest
             fetchCurrentDeliveries(); // Move to current list
@@ -202,7 +202,7 @@ const MyDelivery = () => {
             const endpoint = isCluster ? '/reject-cluster' : '/reject-order';
             const payload = isCluster ? { clusterId: orderId, agentId } : { orderId, agentId };
 
-            await axios.put(`http://localhost:5007/api/delivery-agent${endpoint}`, payload);
+            await axios.put(`${import.meta.env.VITE_API_URL}${endpoint}`, payload);
             setNearestOrder(null);
             fetchNearestOrder(); // Find next one
         } catch (err) {

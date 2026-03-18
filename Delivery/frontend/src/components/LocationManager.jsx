@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import io from 'socket.io-client';
 
-const SOCKET_URL = 'http://localhost:5007'; // Ensure this matches backend port
+const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5007'; // Ensure this matches backend port
 
 const LocationManager = () => {
     useEffect(() => {
