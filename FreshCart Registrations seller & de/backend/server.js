@@ -21,7 +21,7 @@ require('./config/dbConnections');
 
 // Initialize app
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000; // Updated fallback to avoid matching static secrets
 
 // Middleware
 app.use(helmet());

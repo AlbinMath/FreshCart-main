@@ -27,7 +27,8 @@ const chatMessageSchema = new mongoose.Schema({
 const ChatMessage = mongoose.model('AdminAdministratorCommunication', chatMessageSchema);
 
 // JWT secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'freshcart_jwt_secret_key_here';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) console.error("JWT_SECRET is missing");
 
 // Middleware to authenticate users
 const authenticateUser = async (req, res, next) => {

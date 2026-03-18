@@ -9,7 +9,10 @@ const axios = require('axios');
 const router = express.Router();
 
 // JWT secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'freshcart_jwt_secret_key_here';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error("CRITICAL ERROR: JWT_SECRET is not defined in environment variables");
+}
 
 // Middleware to authenticate admin
 const authenticateAdmin = async (req, res, next) => {
@@ -210,7 +213,7 @@ router.patch('/registration/:type/:id/status', authenticateAdmin, async (req, re
       // --- IDS Integration: Auto-create Agent Profile ---
       if (status === 'approved' && registration) {
         try {
-          const IDS_CORE_API_URL = process.env.IDS_CORE_API_URL || 'http://localhost:2012';
+          const IDS_CORE_API_URL = process.env.IDS_CORE_API_URL;
           await axios.post(`${IDS_CORE_API_URL}/api/agents/register`, {
             agent_id: registration._id.toString(),
             name: registration.fullName,

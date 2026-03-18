@@ -11,7 +11,7 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: {
-    folder: 'freshcart_uploads', // The folder name in Cloudinary
+    folder: process.env.VITE_CLOUDINARY_UPLOAD_PRESET || 'registrations', 
     allowed_formats: ['jpg', 'png', 'jpeg', 'pdf'],
   },
 });

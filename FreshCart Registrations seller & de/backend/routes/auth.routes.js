@@ -7,7 +7,8 @@ const Administrator = require('../models/Administrator');
 const router = express.Router();
 
 // JWT secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'freshcart_jwt_secret_key_here';
+// JWT secret from environment variables
+const JWT_SECRET = process.env.JWT_SECRET;
 
 
 

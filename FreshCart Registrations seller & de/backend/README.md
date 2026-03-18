@@ -42,7 +42,7 @@ MONGODB_URI=your_mongodb_connection_string
 JWT_SECRET=your_jwt_secret_key
 
 # Port Configuration
-PORT=5000
+PORT=YOUR_PORT_NUMBER
 
 # Cloudinary Configuration
 CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
@@ -63,7 +63,7 @@ npm run dev
 npm start
 ```
 
-The server will start on port 5000 (or the port specified in your environment variables).
+The server will start on the port specified in your environment variables.
 
 ## API Endpoints
 
